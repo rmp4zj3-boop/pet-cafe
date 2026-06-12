@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毛孩窩 寵物友善咖啡廳 | Paws & Mugs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <a href="#" class="logo">
+            🐾 毛孩窩 Paws & Mugs
+        </a>
+        <nav>
+            <ul id="category-nav">
+                <li><a href="#" class="active" data-category="all">全部餐點</a></li>
+                <li><a href="#" data-category="drinks">飲品</a></li>
+                <li><a href="#" data-category="food">主餐</a></li>
+                <li><a href="#" data-category="pets">毛孩專區</a></li>
+            </ul>
+        </nav>
+        <button class="cart-btn" id="open-cart-btn">
+            🛒 購物車 <span id="cart-count">0</span>
+        </button>
+    </header>
+
+    <main>
+        <h2 class="section-title">我們的菜單</h2>
+        <div class="menu-grid" id="menu-container">
+            <!-- Menu items will be injected here by JS -->
+        </div>
+    </main>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cart-sidebar">
+        <div class="cart-header">
+            <h3>🛒 您的購物車</h3>
+            <button class="close-btn" id="close-cart-btn">&times;</button>
+        </div>
+        <div class="cart-items" id="cart-items-container">
+            <!-- Cart items injected here -->
+        </div>
+        <div class="cart-footer">
+            <div class="total-row">
+                <span>總計</span>
+                <span id="cart-total">NT$ 0</span>
+            </div>
+            <button class="checkout-btn" id="checkout-btn">前往結帳</button>
+        </div>
+    </div>
+
+    <!-- 這裡可以放一些腳本引用 -->
+    <script src="js/data.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
