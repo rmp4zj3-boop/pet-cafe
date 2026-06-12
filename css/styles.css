@@ -347,3 +347,215 @@ th {
     display: flex;
     gap: 0.5rem;
 }
+
+/* =====================
+   RESPONSIVE DESIGN
+   ===================== */
+
+/* --- Tablet (601px ~ 1024px) --- */
+@media (max-width: 1024px) {
+    header {
+        padding: 0.75rem 4%;
+    }
+
+    .admin-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    /* Admin tabs: allow wrapping */
+    .tabs {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+
+    /* POS layout: stack vertically on tablet */
+    #pos-tab > div {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+    }
+
+    #pos-tab > div > div:first-child {
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    /* Revenue summary: stack to 1 col on tablet */
+    #revenue-tab > div:nth-child(2) {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Investment section stack */
+    .investment-section {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Dashboard charts stack */
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .dashboard-grid > div:last-child {
+        grid-column: 1 !important;
+    }
+}
+
+/* --- Mobile (≤ 600px) --- */
+@media (max-width: 600px) {
+    /* Header */
+    header {
+        padding: 0.6rem 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .logo {
+        font-size: 1.1rem;
+    }
+
+    nav ul {
+        gap: 0.75rem;
+    }
+
+    nav a {
+        font-size: 0.85rem;
+    }
+
+    /* Main content */
+    main {
+        padding: 1rem;
+    }
+
+    h2.section-title {
+        font-size: 1.4rem;
+    }
+
+    /* Menu Grid: 1 column on mobile */
+    .menu-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    /* Menu Item: horizontal layout for compact view */
+    .menu-item {
+        flex-direction: row;
+        padding: 1rem;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .menu-item img {
+        width: 90px;
+        height: 90px;
+        min-width: 90px;
+        border-radius: 10px;
+        margin-bottom: 0;
+    }
+
+    .item-info {
+        flex: 1;
+    }
+
+    .item-info h3 {
+        font-size: 1rem;
+    }
+
+    /* Cart sidebar full-screen on mobile */
+    .cart-sidebar {
+        width: 100vw;
+        right: -100vw;
+    }
+
+    .cart-sidebar.open {
+        right: 0;
+    }
+
+    /* Admin Panel */
+    .admin-container {
+        margin: 0.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+
+    /* Tabs: scrollable row */
+    .tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap !important;
+        padding-bottom: 0.25rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-size: 0.85rem !important;
+        padding: 0.4rem 0.75rem !important;
+    }
+
+    /* Admin header */
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    /* POS layout: full stacked */
+    #pos-tab > div {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+        gap: 1rem !important;
+    }
+
+    #pos-tab > div > div:first-child {
+        max-height: 45vh;
+        overflow-y: auto;
+    }
+
+    #pos-menu-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Revenue summary cards: 1 col */
+    #revenue-tab > div:nth-child(2) {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    #rev-today-total, #rev-month-total {
+        font-size: 1.8rem !important;
+    }
+
+    /* Tables: allow horizontal scroll */
+    table {
+        font-size: 0.85rem;
+    }
+
+    th, td {
+        padding: 0.6rem 0.4rem;
+    }
+
+    /* Investment section */
+    .investment-section {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Dashboard charts */
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .dashboard-grid > div:last-child {
+        grid-column: 1 !important;
+    }
+
+    /* Projection table: horizontal scroll */
+    #projection-table {
+        min-width: 600px;
+    }
+}
