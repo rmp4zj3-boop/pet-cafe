@@ -27,6 +27,7 @@
                 <button class="tab-btn" data-target="pos-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">POS 結帳</button>
                 <button class="tab-btn" data-target="revenue-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">實際營收</button>
                 <button class="tab-btn" data-target="projection-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">營運預測</button>
+                <button class="tab-btn" data-target="settings-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">基本設定</button>
             </div>
 
             <!-- Menu Management Tab -->
@@ -268,6 +269,22 @@
                             </div>
                             <button id="pos-checkout-btn" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.2rem; background: #e65100; border: none;">結帳 (Checkout)</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings-tab" class="tab-content" style="display: none;">
+                <div class="admin-header" style="margin-bottom: 1rem;">
+                    <h2>基本設定</h2>
+                    <button class="btn btn-primary" id="save-settings-btn">儲存設定</button>
+                </div>
+                
+                <div style="background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid #ddd;">
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333;">店鋪名稱：</label>
+                        <input type="text" id="setting-shop-name" class="form-control" style="width: 100%; max-width: 400px;" placeholder="例如：毛孩窩">
+                        <p style="color: #888; font-size: 0.9rem; margin-top: 0.5rem;">修改後，前台與後台的店名將會同步更新。</p>
                     </div>
                 </div>
             </div>

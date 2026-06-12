@@ -145,6 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPOSCart();
             } else if (targetId === 'revenue-tab') {
                 renderRevenue();
+            } else if (targetId === 'settings-tab') {
+                document.getElementById('setting-shop-name').value = getSettings().shopName;
             }
         });
     });
@@ -549,4 +551,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if(refreshRevenueBtn) {
         refreshRevenueBtn.addEventListener('click', renderRevenue);
     }
+
+    // --- Settings Logic ---
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            const newShopName = document.getElementById('setting-shop-name').value.trim() || '毛孩窩';
+            saveSettings({ shopName: newShopName });
+            updateShopNameDisplay();
+            alert('設定已儲存！');
+        });
+    }
+
+    function updateShopNameDisplay() {
+        const settings = getSettings();
+        const displays = document.querySelectorAll('.shop-name-display');
+        displays.forEach(el => el.textContent = settings.shopName);
+        document.title = `後台管理 - ${settings.shopName} 寵物友善咖啡廳`;
+    }
+
+    // Initialize shop name on load
+    updateShopNameDisplay();
 });

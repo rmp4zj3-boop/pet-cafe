@@ -118,3 +118,16 @@ function getOrders() {
 function saveOrders(ordersList) {
     localStorage.setItem('petCafeOrders', JSON.stringify(ordersList));
 }
+
+const DEFAULT_SETTINGS = {
+    shopName: '毛孩窩'
+};
+
+function getSettings() {
+    const saved = localStorage.getItem('petCafeSettings');
+    return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+}
+
+function saveSettings(settings) {
+    localStorage.setItem('petCafeSettings', JSON.stringify(settings));
+}
