@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>毛孩窩 | 寵物友善咖啡廳 | Paws & Mugs</title>
+    <title>毛孩窩 | 寵物友善咖啡廳 | Paws &amp; Mugs</title>
+    <meta name="description" content="毛孩窩寵物友善咖啡廳線上點餐系統，提供多種餐點選擇，支援套餐、發票與電子載具。">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- ZXing for barcode/QR scanning -->
+    <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 </head>
 <body>
+
+    <!-- Header -->
     <header>
-        <a href="#" class="logo">
-            🐾 <span class="shop-name-display">毛孩窩</span> Paws & Mugs
-        </a>
+        <a href="#" class="logo">🐾 <span class="shop-name-display">毛孩窩</span></a>
         <nav>
-            <ul id="category-nav">
-                <li><a href="#" class="active" data-category="all">全部餐點</a></li>
-                <li><a href="#" data-category="drinks">飲品</a></li>
-                <li><a href="#" data-category="food">主餐</a></li>
-                <li><a href="#" data-category="pets">毛孩專區</a></li>
+            <ul>
+                <li><a href="admin.html">後台管理</a></li>
             </ul>
         </nav>
         <button class="cart-btn" id="open-cart-btn">
@@ -25,10 +25,27 @@
         </button>
     </header>
 
+    <!-- Table Number Banner -->
+    <div class="table-banner">
+        <label for="table-number-input">🪑 桌號：</label>
+        <input type="text" id="table-number-input" class="table-number-input" placeholder="請輸入桌號" maxlength="6">
+        <span id="table-hint" style="font-size:0.85rem; color:#e65100; display:none;">⚠️ 請先輸入桌號再結帳</span>
+    </div>
+
+    <!-- Main Content -->
     <main>
-        <h1 style="font-size: 3rem; margin-bottom: 1rem;"><span class="shop-name-display">毛孩窩</span> 寵物友善咖啡廳</h1>
+        <h1 style="font-size:2rem; margin-bottom:1.25rem;">
+            <span class="shop-name-display">毛孩窩</span> 點餐菜單
+        </h1>
+
+        <!-- Category Tabs -->
+        <div class="category-tabs" id="category-tabs">
+            <!-- Injected by JS -->
+        </div>
+
+        <!-- Menu Grid -->
         <div class="menu-grid" id="menu-container">
-            <!-- Menu items will be injected here by JS -->
+            <!-- Menu items injected by JS -->
         </div>
     </main>
 
@@ -41,8 +58,25 @@
         <div class="cart-items" id="cart-items-container">
             <!-- Cart items injected here -->
         </div>
+
+        <!-- Invoice Section -->
+        <div class="invoice-section">
+            <h4>🧾 發票選項</h4>
+            <div class="invoice-options">
+                <label><input type="radio" name="invoice-type" value="paper" id="inv-paper" checked> 紙本發票</label>
+                <label><input type="radio" name="invoice-type" value="carrier" id="inv-carrier"> 電子載具</label>
+                <label><input type="radio" name="invoice-type" value="uniform" id="inv-uniform"> 統一編號</label>
+            </div>
+            <div id="invoice-carrier-row" style="display:none;" class="invoice-input-row">
+                <input type="text" id="carrier-number" placeholder="/XXXXXXX（載具條碼）" maxlength="20">
+                <button class="scan-btn" id="scan-carrier-btn">📷 掃描</button>
+            </div>
+            <div id="invoice-uniform-row" style="display:none;" class="invoice-input-row">
+                <input type="text" id="uniform-number" placeholder="請輸入統一編號（8碼）" maxlength="8">
+            </div>
+        </div>
+
         <div class="cart-footer">
-            <div class="logo"><span class="shop-name-display">毛孩窩</span></div>
             <div class="total-row">
                 <span>總計</span>
                 <span id="cart-total">NT$ 0</span>
@@ -51,7 +85,69 @@
         </div>
     </div>
 
-    <!-- 這裡可以放一些腳本引用 -->
+    <!-- Set Meal Modal -->
+    <div class="modal-overlay" id="setmeal-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="setmeal-item-name">品項名稱</h3>
+                    <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0.25rem;">
+                        基本價格：<span id="setmeal-base-price">NT$ 0</span>
+                    </p>
+                </div>
+                <button class="close-btn" id="close-setmeal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-weight:600; margin-bottom:0.75rem;" id="sm-title">選擇套餐（選填）</p>
+                <div id="setmeal-options-list">
+                    <!-- Injected by JS -->
+                </div>
+                <div id="eco-cup-container" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid #eee;">
+                    <label style="display:flex; align-items:center; gap:0.5rem; font-weight:bold; color:#2e7d32; cursor:pointer;">
+                        <input type="checkbox" id="eco-cup-checkbox" style="width:20px; height:20px;">
+                        🌱 自備環保杯 (折抵 NT$ 5)
+                    </label>
+                </div>
+                <div class="sm-selected-preview" id="sm-selected-preview"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="confirm-setmeal-btn" style="width:100%; padding:0.75rem; font-size:1rem;">
+                    加入購物車
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal for Carrier Scan -->
+    <div class="modal-overlay" id="camera-modal" style="display:none;">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h3>📷 掃描電子載具條碼</h3>
+                <button class="close-btn" id="close-camera-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-video-wrap">
+                    <video id="camera-video" autoplay muted playsinline></video>
+                </div>
+                <p class="camera-hint">請將條碼對準畫面中央</p>
+                <p id="camera-result" style="text-align:center; font-weight:700; color:var(--success-color); margin-top:0.5rem;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Success Modal -->
+    <div class="modal-overlay" id="success-modal" style="display:none;">
+        <div class="modal-content" style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:1rem;">✅</div>
+            <h3 style="font-size:1.4rem; margin-bottom:0.5rem;">訂單已送出！</h3>
+            <p id="success-order-id" style="color:var(--text-muted); margin-bottom:0.5rem;"></p>
+            <p id="success-table" style="font-size:1.1rem; font-weight:700; margin-bottom:1.5rem;"></p>
+            <button class="btn btn-primary" id="close-success-btn" style="padding:0.75rem 2rem; font-size:1rem;">
+                繼續點餐
+            </button>
+        </div>
+    </div>
+
     <script src="js/data.js"></script>
     <script src="js/main.js"></script>
 </body>

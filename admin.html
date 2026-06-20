@@ -7,289 +7,501 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 </head>
 <body>
     <header>
-        <a href="index.html" class="logo">
-            🐾 毛孩窩 後台管理系統
-        </a>
-        <nav>
-            <ul>
-                <li><a href="index.html">返回前台點餐</a></li>
-            </ul>
-        </nav>
+        <a href="admin.html" class="logo">🐾 <span class="shop-name-display">毛孩窩</span> 後台管理</a>
+        <nav><ul><li><a href="index.html">返回前台</a></li></ul></nav>
     </header>
 
     <main>
         <div class="admin-container">
-            <div class="tabs" style="margin-bottom: 2rem; border-bottom: 2px solid #eee; display: flex; gap: 1rem;">
-                <button class="tab-btn active" data-target="menu-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid #ffb347; font-weight: bold; color: #333;">菜單管理</button>
-                <button class="tab-btn" data-target="pos-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">POS 結帳</button>
-                <button class="tab-btn" data-target="revenue-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">實際營收</button>
-                <button class="tab-btn" data-target="projection-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">營運預測</button>
-                <button class="tab-btn" data-target="settings-tab" style="padding: 0.5rem 1rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 3px solid transparent; color: #666;">基本設定</button>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active"  data-target="menu-tab">🍽️ 菜單管理</button>
+                <button class="tab-btn"          data-target="pos-tab">💳 POS 結帳</button>
+                <button class="tab-btn"          data-target="kitchen-tab">🔔 出餐點單</button>
+                <button class="tab-btn"          data-target="settlement-tab">📝 當日結算</button>
+                <button class="tab-btn"          data-target="revenue-tab">📊 實際營收</button>
+                <button class="tab-btn"          data-target="projection-tab">📈 營運預測</button>
+                <button class="tab-btn"          data-target="settings-tab">⚙️ 基本設定</button>
             </div>
 
-            <!-- Menu Management Tab -->
-            <div id="menu-tab" class="tab-content active" style="display: block;">
+            <!-- ===== MENU MANAGEMENT TAB ===== -->
+            <div id="menu-tab" class="tab-content active">
                 <div class="admin-header">
                     <h2>菜單管理</h2>
-                    <button class="btn btn-primary" id="add-new-btn">新增品項</button>
+                    <button class="btn btn-primary" id="add-new-btn">+ 新增品項</button>
                 </div>
-            <div id="item-form-container" style="display: none; background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #ddd;">
-                <h3 id="form-title" style="margin-bottom: 1rem;">新增品項</h3>
-                <form id="item-form">
-                    <input type="hidden" id="item-id">
-                    <div class="form-group">
-                        <label>名稱 (Name)</label>
-                        <input type="text" id="item-name" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>分類 (Category)</label>
-                        <select id="item-category" class="form-control" required>
-                            <option value="drinks">飲品</option>
-                            <option value="food">主餐</option>
-                            <option value="pets">毛孩專區</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>描述 (Description)</label>
-                        <input type="text" id="item-description" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>價格 (Price NT$)</label>
-                        <input type="number" id="item-price" class="form-control" required min="0">
-                    </div>
-                    <div class="form-group">
-                        <label>圖片網址 (Image URL)</label>
-                        <input type="url" id="item-image" class="form-control" required placeholder="https://...">
-                    </div>
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                        <button type="submit" class="btn btn-primary">儲存</button>
-                        <button type="button" class="btn" id="cancel-btn" style="background: #e0e0e0;">取消</button>
-                    </div>
-                </form>
-            </div>
 
-            <div style="overflow-x: auto;">
-                <table id="admin-table">
-                    <thead>
-                        <tr>
-                            <th>圖片</th>
-                            <th>名稱</th>
-                            <th>分類</th>
-                            <th>價格</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-menu-body">
-                        <!-- Items injected here by JS -->
-                    </tbody>
-                </table>
-            </div>
-            </div>
-
-            <!-- Business Projection Tab -->
-            <div id="projection-tab" class="tab-content" style="display: none;">
-                <div class="admin-header" style="margin-bottom: 1rem;">
-                    <h2>營運預測資料</h2>
-                    <button class="btn btn-primary" id="save-projection-btn">儲存修改</button>
-                </div>
-                
-                <!-- Initial Investment Section -->
-                <div class="investment-section" style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #ddd; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    <div>
-                        <h3 style="margin-bottom: 1rem; color: #333; font-size: 1.2rem;">初期投入資金估算</h3>
-                        <table style="width: 100%;">
-                            <tbody>
-                                <tr>
-                                    <td style="padding: 0.5rem 0;"><strong>裝潢與設計工程</strong></td>
-                                    <td><input type="number" id="inv-decoration" class="form-control" style="width: 100%;"></td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 0.5rem 0;"><strong>生財設備與餐具</strong></td>
-                                    <td><input type="number" id="inv-equipment" class="form-control" style="width: 100%;"></td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 0.5rem 0;"><strong>租金押金 (系統連動)</strong></td>
-                                    <td><input type="number" id="inv-deposit" class="form-control" style="width: 100%;" disabled title="自動帶入第 1 年月租金的2個月"></td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 0.5rem 0;"><strong>雜支與開辦費</strong></td>
-                                    <td><input type="number" id="inv-misc" class="form-control" style="width: 100%;"></td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 0.5rem 0;"><strong>預備週轉金</strong></td>
-                                    <td><input type="number" id="inv-working-capital" class="form-control" style="width: 100%;"></td>
-                                </tr>
-                                <tr style="background-color: #ffe4b5;">
-                                    <td style="padding: 0.5rem;"><strong>總計開辦資金</strong></td>
-                                    <td style="padding: 0.5rem;"><strong id="inv-total">NT$ 0</strong></td>
-                                </tr>
-                                <tr style="background-color: #e0ffff;">
-                                    <td style="padding: 0.5rem;"><strong>預估回收期 (ROI)</strong></td>
-                                    <td style="padding: 0.5rem;"><strong id="inv-roi" style="color: #0066cc;">計算中...</strong></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div>
-                        <h3 style="margin-bottom: 1rem; text-align: center; color: #333; font-size: 1.2rem;">資金分配比例</h3>
-                        <div style="height: 250px; display: flex; justify-content: center;">
-                            <canvas id="investmentChart"></canvas>
+                <!-- Add / Edit Form -->
+                <div id="item-form-container" style="display:none; background:#f9f9f9; padding:1.5rem; border-radius:12px; margin-bottom:2rem; border:1px solid #ddd;">
+                    <h3 id="form-title" style="margin-bottom:1rem;">新增品項</h3>
+                    <form id="item-form">
+                        <input type="hidden" id="item-id">
+                        <div class="item-form-grid">
+                            <div class="form-group">
+                                <label>名稱 <span style="color:#999;font-size:0.8rem;">(必填)</span></label>
+                                <input type="text" id="item-name" class="form-control" placeholder="例：原味可頌">
+                            </div>
+                            <div class="form-group">
+                                <label>分類</label>
+                                <select id="item-category" class="form-control">
+                                    <option value="drinks">☕ 飲品</option>
+                                    <option value="food">🍽️ 主餐</option>
+                                    <option value="toast">🍞 吐司</option>
+                                    <option value="bagel">🥯 貝果</option>
+                                    <option value="croissant">🥐 可頌</option>
+                                    <option value="risotto">🍚 燉飯</option>
+                                    <option value="pasta">🍝 義大利麵</option>
+                                    <option value="dessert">🍰 甜點</option>
+                                    <option value="pets">🐾 毛孩專區</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>價格 (NT$)</label>
+                                <input type="number" id="item-price" class="form-control" placeholder="例：150" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>圖片網址（可選）</label>
+                                <input type="url" id="item-image" class="form-control" placeholder="https://...">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>描述（可選）</label>
+                                <input type="text" id="item-description" class="form-control" placeholder="簡短描述此品項">
+                            </div>
                         </div>
-                    </div>
+                        <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                            <button type="submit" class="btn btn-primary">💾 儲存品項</button>
+                            <button type="button" class="btn" id="cancel-btn" style="background:#e0e0e0;">取消</button>
+                        </div>
+                    </form>
                 </div>
 
-                <h3 style="margin-bottom: 1rem; color: #333; font-size: 1.2rem;">營運條件與收支預估 (3 年)</h3>
-                <div style="overflow-x: auto; margin-bottom: 2rem;">
-                    <table id="projection-table" style="min-width: 800px;">
+                <!-- Menu Table -->
+                <div style="overflow-x:auto;">
+                    <table id="admin-table">
                         <thead>
                             <tr>
-                                <th>項目 / 年度</th>
-                                <th>第 1 年</th>
-                                <th>第 2 年</th>
-                                <th>第 3 年</th>
+                                <th>名稱</th>
+                                <th>分類</th>
+                                <th>價格</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
-                        <tbody id="projection-body">
-                            <!-- Injected by JS -->
-                        </tbody>
+                        <tbody id="admin-menu-body"></tbody>
                     </table>
                 </div>
 
-                <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-                    <div class="chart-container" style="background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <h3 style="margin-bottom: 1rem; text-align: center;">營收與成本趨勢 (年)</h3>
-                        <canvas id="revenueCostChart"></canvas>
+                <!-- Set Meal Management -->
+                <div class="setmeal-admin" id="setmeal-admin-section">
+                    <h3>🍱 套餐選項管理</h3>
+                    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">設定「吐司、貝果、可頌、燉飯、義大利麵」各分類的套餐選項。</p>
+                    <div class="setmeal-cat-tabs" id="sm-cat-tabs">
+                        <button class="setmeal-cat-tab active" data-sm-cat="toast">🍞 吐司</button>
+                        <button class="setmeal-cat-tab" data-sm-cat="bagel">🥯 貝果</button>
+                        <button class="setmeal-cat-tab" data-sm-cat="croissant">🥐 可頌</button>
+                        <button class="setmeal-cat-tab" data-sm-cat="risotto">🍚 燉飯</button>
+                        <button class="setmeal-cat-tab" data-sm-cat="pasta">🍝 義大利麵</button>
                     </div>
-                    <div class="chart-container" style="background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <h3 style="margin-bottom: 1rem; text-align: center;">淨利率趨勢</h3>
-                        <canvas id="profitMarginChart"></canvas>
+                    <div id="sm-options-editor"></div>
+                    <div style="display:flex; align-items:center; gap:0.75rem; margin-top:1rem; padding:0.75rem; background:#fff8f0; border-radius:8px; border:1px solid #ffd0a0;">
+                        <label style="font-weight:600; white-space:nowrap;">☕ 套餐飲料折抵：NT$</label>
+                        <input type="number" id="sm-drink-discount-input" min="0" value="0" style="width:80px; padding:0.35rem 0.5rem; border:1px solid #ccc; border-radius:6px; text-align:center; font-size:1rem;">
+                        <span style="font-size:0.85rem; color:var(--text-muted);">(這分類套餐加點飲料時自動折抵此金額)</span>
                     </div>
-                    <div class="chart-container" style="background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); grid-column: 1 / -1;">
-                        <h3 style="margin-bottom: 1rem; text-align: center;">成本結構分析 (第 3 年預估)</h3>
-                        <div style="height: 300px; display: flex; justify-content: center;">
-                            <canvas id="costStructureChart"></canvas>
+                    <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+                        <button class="btn btn-primary" id="sm-add-row-btn">+ 新增選項</button>
+                        <button class="btn btn-success" id="sm-save-btn">💾 儲存套餐設定</button>
+                    </div>
+                </div>
+
+                <!-- Drink Size Management -->
+                <div class="setmeal-admin" id="drinksize-admin-section" style="margin-top:2rem;">
+                    <h3>🥤 飲品容量設定</h3>
+                    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">設定飲品的容量名稱與加價金額。</p>
+                    <div id="drinksize-options-editor"></div>
+                    <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+                        <button class="btn btn-primary" id="ds-add-row-btn">+ 新增容量選項</button>
+                        <button class="btn btn-success" id="ds-save-btn">💾 儲存容量設定</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== POS TAB ===== -->
+            <div id="pos-tab" class="tab-content">
+                <div class="pos-layout">
+                    <!-- Left: Menu & Queue -->
+                    <div class="pos-menu-panel">
+                        <div style="padding:0.75rem; display:flex; justify-content:space-between; align-items:center;">
+                            <h2 style="font-size:1.15rem; margin:0;">點餐 (POS)</h2>
+                            <button id="pos-toggle-queue-btn" class="btn" style="background:#17a2b8;color:white;font-size:0.85rem;">前台待結帳訂單 <span class="badge" id="pos-queue-count" style="background:red;">0</span></button>
+                        </div>
+                        <div id="pos-menu-view" style="display:flex; flex-direction:column; flex-grow:1; overflow:hidden;">
+                            <div class="pos-cat-tabs" id="pos-cat-tabs"></div>
+                            <div class="pos-menu-grid" id="pos-menu-grid"></div>
+                        </div>
+                        <div id="pos-queue-view" style="display:none; padding:0.75rem; overflow-y:auto; flex-grow:1; background:#f4f6f8; border-top:1px solid #eee;">
+                            <div id="pos-queue-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Cart -->
+                    <div class="pos-cart-panel">
+                        <div class="pos-cart-header">結帳明細</div>
+
+                        <!-- Meta: table, type, guests -->
+                        <div class="pos-meta-row">
+                            <label>桌號：<input type="text" id="pos-table" class="pos-guests-input" style="width:70px;" placeholder="桌號"></label>
+                            <label><input type="radio" name="pos-order-type" value="內用" checked> 內用</label>
+                            <label><input type="radio" name="pos-order-type" value="外帶"> 外帶</label>
+                            <label>人數：<input type="number" id="pos-guests" class="pos-guests-input" value="1" min="1"></label>
+                        </div>
+
+                        <!-- Cart items -->
+                        <div class="pos-cart-items" id="pos-cart-items"></div>
+
+                        <!-- Discount -->
+                        <div class="discount-label">折扣</div>
+                        <div class="discount-grid" id="discount-grid">
+                            <button class="disc-btn active" data-rate="1">無折扣</button>
+                            <button class="disc-btn" data-rate="0.95">95折</button>
+                            <button class="disc-btn" data-rate="0.9">9折</button>
+                            <button class="disc-btn" data-rate="0.85">85折</button>
+                            <button class="disc-btn" data-rate="0.8">8折</button>
+                            <button class="disc-btn" data-rate="0.75">75折</button>
+                            <button class="disc-btn" data-rate="0.7">7折</button>
+                            <button class="disc-btn" data-rate="0.65">65折</button>
+                            <button class="disc-btn" data-rate="0.6">6折</button>
+                            <button class="disc-btn" data-rate="0.5">5折</button>
+                        </div>
+
+                        <!-- Totals -->
+                        <div class="pos-totals">
+                            <div class="pos-total-row"><span>小計</span><span id="pos-subtotal">NT$ 0</span></div>
+                            <div class="pos-total-row"><span>折扣</span><span id="pos-discount-amount" style="color:#e65100;">- NT$ 0</span></div>
+                            <div class="pos-total-row pos-grand-total"><span>總計</span><span id="pos-total">NT$ 0</span></div>
+                        </div>
+
+                        <button class="pos-checkout-btn" id="pos-checkout-btn">結帳 (Checkout)</button>
+                        <button class="btn" id="pos-clear-btn" style="width:100%;margin-top:0.5rem;background:#eee;">清除</button>
+                    </div>
+                </div>
+
+                <!-- POS Set Meal Modal -->
+                <div class="modal-overlay" id="pos-setmeal-modal" style="display:none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h3 id="pos-sm-item-name"></h3>
+                                <p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.25rem;">基本價格：<span id="pos-sm-base-price"></span></p>
+                            </div>
+                            <button class="close-btn" id="close-pos-sm-btn">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="font-weight:600;margin-bottom:0.75rem;" id="pos-sm-title">選擇套餐（選填）</p>
+                            <div id="pos-sm-options-list"></div>
+                            <div id="pos-eco-cup-container" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid #eee;">
+                                <label style="display:flex; align-items:center; gap:0.5rem; font-weight:bold; color:#2e7d32; cursor:pointer;">
+                                    <input type="checkbox" id="pos-eco-cup-checkbox" style="width:20px; height:20px;">
+                                    🌱 自備環保杯 (折抵 NT$ 5)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-primary" id="confirm-pos-sm-btn" style="width:100%;padding:0.75rem;font-size:1rem;">加入</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Revenue Tab -->
-            <div id="revenue-tab" class="tab-content" style="display: none;">
-                <div class="admin-header" style="margin-bottom: 1rem;">
+            <!-- ===== KITCHEN DISPLAY TAB ===== -->
+            <div id="kitchen-tab" class="tab-content">
+                <div class="admin-header">
+                    <h2>🔔 出餐點單</h2>
+                    <div style="display:flex;gap:0.75rem;align-items:center;">
+                        <span style="font-size:0.85rem;color:var(--text-muted);">自動更新中</span>
+                        <button class="btn btn-primary" id="refresh-kitchen-btn">🔄 立即更新</button>
+                    </div>
+                </div>
+                <div class="kitchen-layout">
+                    <!-- Pending -->
+                    <div class="kitchen-panel pending-panel">
+                        <div class="kitchen-panel-header">
+                            🔔 待出餐
+                            <span class="badge" id="pending-count">0</span>
+                        </div>
+                        <div class="kitchen-orders" id="pending-orders-list">
+                            <div class="kitchen-empty">目前沒有待出餐訂單</div>
+                        </div>
+                    </div>
+                    <!-- Served -->
+                    <div class="kitchen-panel served-panel">
+                        <div class="kitchen-panel-header">
+                            ✅ 已出餐紀錄
+                            <button class="btn" id="clear-served-btn" style="background:#eee;font-size:0.8rem;padding:0.25rem 0.75rem;">清除紀錄</button>
+                        </div>
+                        <div class="kitchen-orders" id="served-orders-list">
+                            <div class="kitchen-empty">尚無出餐紀錄</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== SETTLEMENT TAB (當日結算) ===== -->
+            <div id="settlement-tab" class="tab-content">
+                <div class="admin-header no-print">
+                    <h2>📝 當日結算表</h2>
+                    <div style="display:flex; gap:0.75rem;">
+                        <input type="date" id="settlement-date" class="form-control" style="width:150px; padding:0.4rem;">
+                        <button class="btn btn-primary" id="refresh-settlement-btn">🔄 更新</button>
+                        <button class="btn btn-success" id="print-settlement-btn">🖨️ 列印結算單</button>
+                        <button class="btn" id="confirm-settlement-btn" style="background:#e65100; color:white;">✅ 確認結算</button>
+                        <button class="btn" id="view-history-btn" style="background:#607d8b; color:white;">📖 歷史紀錄</button>
+                    </div>
+                </div>
+
+                <div id="settlement-print-area">
+                    <h2 class="print-only" style="display:none; text-align:center; margin-bottom:1rem; border-bottom:2px dashed #000; padding-bottom:0.5rem;"><span class="shop-name-display">毛孩窩</span> - 當日結算單</h2>
+                    <p class="print-only" style="display:none; text-align:center; margin-bottom:1rem;" id="print-date-display"></p>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+                        <div class="stat-card">
+                            <h3>💰 總營業額</h3>
+                            <div class="val" id="set-total-revenue">NT$ 0</div>
+                            <div class="sub-val">總折扣金額：<span id="set-total-discount">NT$ 0</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>🧾 總單數 / 人數</h3>
+                            <div class="val" id="set-total-orders">0 筆</div>
+                            <div class="sub-val">來客數：<span id="set-total-guests">0</span> 人</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>🍽️ 訂單類型</h3>
+                            <div class="val" style="font-size:1.4rem;">內用：<span id="set-dine-in">0</span> 筆</div>
+                            <div class="sub-val" style="font-size:1.1rem; color:#444;">外帶：<span id="set-takeout">0</span> 筆</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>👤 平均客單價</h3>
+                            <div class="val" id="set-avg-guest">NT$ 0</div>
+                            <div class="sub-val">每桌均價：<span id="set-avg-table">NT$ 0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Cash Management Section -->
+                    <div style="background:#fff3e0; border-radius:12px; padding:1.5rem; border:2px solid #ffcc80; margin-bottom:2rem;">
+                        <h3 style="margin-bottom:1rem; color:#e65100;">💼 現金結算與匯款計算</h3>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; align-items:center;">
+                            <div>
+                                <label style="display:block; font-weight:600; margin-bottom:0.25rem;">總營業額</label>
+                                <input type="text" id="set-calc-revenue" class="form-control" disabled style="background:#fff; font-weight:bold;">
+                            </div>
+                            <div>
+                                <label style="display:block; font-weight:600; margin-bottom:0.25rem;">➖ 留存零用金</label>
+                                <input type="number" id="set-petty-cash" class="form-control" placeholder="例：2000" min="0" value="0">
+                            </div>
+                            <div>
+                                <label style="display:block; font-weight:600; margin-bottom:0.25rem;">➖ 貨款支出</label>
+                                <input type="number" id="set-expenses" class="form-control" placeholder="例：1500" min="0" value="0">
+                            </div>
+                            <div style="text-align:right;">
+                                <label style="display:block; font-weight:600; margin-bottom:0.25rem; color:#2e7d32;">🏦 當日所需匯款金額</label>
+                                <div id="set-remittance" style="font-size:2rem; font-weight:800; color:#2e7d32;">NT$ 0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+                        <!-- Category Breakdown -->
+                        <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd;">
+                            <h3 style="margin-bottom:1rem; border-bottom:2px solid #eee; padding-bottom:0.5rem;">📊 各分類營收</h3>
+                            <table style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid #eee;">
+                                        <th style="padding:0.5rem 0;">分類</th>
+                                        <th style="padding:0.5rem 0; text-align:right;">營收</th>
+                                        <th style="padding:0.5rem 0; text-align:right;">佔比</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="set-category-body"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Top Items -->
+                        <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd;">
+                            <h3 style="margin-bottom:1rem; border-bottom:2px solid #eee; padding-bottom:0.5rem;">🏆 商品銷售排行</h3>
+                            <div style="max-height:400px; overflow-y:auto;" class="print-no-scroll">
+                                <table style="width:100%; border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="border-bottom:2px solid #eee;">
+                                            <th style="padding:0.5rem 0;">商品名稱</th>
+                                            <th style="padding:0.5rem 0; text-align:center;">數量</th>
+                                            <th style="padding:0.5rem 0; text-align:right;">小計</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="set-items-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== REVENUE TAB ===== -->
+            <div id="revenue-tab" class="tab-content">
+                <div class="admin-header">
                     <h2>實際營收統計</h2>
-                    <button class="btn btn-primary" id="refresh-revenue-btn" style="background: #4BC0C0; border: none;">重新整理</button>
+                    <button class="btn btn-primary" id="refresh-revenue-btn" style="background:#4BC0C0;border:none;">重新整理</button>
                 </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-                    <!-- Today's Summary -->
-                    <div style="background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid #FF9F40;">
-                        <h3 style="color: #666; margin-bottom: 1rem;">今日總營業額</h3>
-                        <div id="rev-today-total" style="font-size: 2.5rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">NT$ 0</div>
-                        <div style="color: #888; margin-bottom: 0.5rem;">今日訂單數 (桌數)：<span id="rev-today-orders">0</span> 筆</div>
-                        <div style="color: #888; margin-bottom: 0.5rem;">今日來客數量：<span id="rev-today-guests">0</span> 人</div>
-                        <div style="color: #888; font-weight: bold;">每桌平均消費：<span id="rev-today-avg-table">NT$ 0</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:2rem;">
+                    <div style="background:#fff;padding:2rem;border-radius:12px;box-shadow:var(--shadow);text-align:center;border-top:5px solid #FF9F40;">
+                        <h3 style="color:#666;margin-bottom:1rem;">今日總營業額</h3>
+                        <div id="rev-today-total" style="font-size:2.5rem;font-weight:bold;color:#333;margin-bottom:0.5rem;">NT$ 0</div>
+                        <div style="color:#888;margin-bottom:0.5rem;">今日訂單數：<span id="rev-today-orders">0</span> 筆</div>
+                        <div style="color:#888;margin-bottom:0.5rem;">今日來客數：<span id="rev-today-guests">0</span> 人</div>
+                        <div style="color:#888;font-weight:bold;">每桌平均消費：<span id="rev-today-avg-table">NT$ 0</span></div>
                     </div>
-                    
-                    <!-- Month's Summary -->
-                    <div style="background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-top: 5px solid #36A2EB;">
-                        <h3 style="color: #666; margin-bottom: 1rem;">本月總營業額</h3>
-                        <div id="rev-month-total" style="font-size: 2.5rem; font-weight: bold; color: #333; margin-bottom: 0.5rem;">NT$ 0</div>
-                        <div style="color: #888; margin-bottom: 0.5rem;">本月訂單數 (桌數)：<span id="rev-month-orders">0</span> 筆</div>
-                        <div style="color: #888; margin-bottom: 0.5rem;">本月來客數量：<span id="rev-month-guests">0</span> 人</div>
-                        <div style="color: #888; font-weight: bold;">每桌平均消費：<span id="rev-month-avg-table">NT$ 0</span></div>
+                    <div style="background:#fff;padding:2rem;border-radius:12px;box-shadow:var(--shadow);text-align:center;border-top:5px solid #36A2EB;">
+                        <h3 style="color:#666;margin-bottom:1rem;">本月總營業額</h3>
+                        <div id="rev-month-total" style="font-size:2.5rem;font-weight:bold;color:#333;margin-bottom:0.5rem;">NT$ 0</div>
+                        <div style="color:#888;margin-bottom:0.5rem;">本月訂單數：<span id="rev-month-orders">0</span> 筆</div>
+                        <div style="color:#888;margin-bottom:0.5rem;">本月來客數：<span id="rev-month-guests">0</span> 人</div>
+                        <div style="color:#888;font-weight:bold;">每桌平均消費：<span id="rev-month-avg-table">NT$ 0</span></div>
                     </div>
                 </div>
-                
-                <div style="background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid #ddd;">
-                    <h3 style="margin-bottom: 1rem;">近期訂單紀錄</h3>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                <div style="background:#fff;padding:1.5rem;border-radius:12px;border:1px solid #ddd;">
+                    <h3 style="margin-bottom:1rem;">近期訂單紀錄</h3>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;text-align:left;border-collapse:collapse;">
                             <thead>
-                                <tr style="border-bottom: 2px solid #eee;">
-                                    <th style="padding: 0.5rem;">訂單時間</th>
-                                    <th style="padding: 0.5rem;">類型</th>
-                                    <th style="padding: 0.5rem;">折扣</th>
-                                    <th style="padding: 0.5rem;">總計</th>
+                                <tr style="border-bottom:2px solid #eee;">
+                                    <th style="padding:0.5rem;">訂單時間</th>
+                                    <th style="padding:0.5rem;">桌號</th>
+                                    <th style="padding:0.5rem;">類型</th>
+                                    <th style="padding:0.5rem;">折扣</th>
+                                    <th style="padding:0.5rem;">總計</th>
                                 </tr>
                             </thead>
-                            <tbody id="rev-orders-body">
-                                <!-- Orders injected here -->
-                            </tbody>
+                            <tbody id="rev-orders-body"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- POS Tab -->
-            <div id="pos-tab" class="tab-content" style="display: none;">
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; height: 75vh;">
-                    <!-- Menu Side -->
-                    <div style="background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #ddd; overflow-y: auto;">
-                        <div class="admin-header" style="margin-bottom: 1rem;">
-                            <h2>點餐 (POS)</h2>
-                        </div>
-                        <div id="pos-menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem;">
-                            <!-- Menu items injected here -->
-                        </div>
+            <!-- ===== PROJECTION TAB ===== -->
+            <div id="projection-tab" class="tab-content">
+                <div class="admin-header" style="margin-bottom:1rem;">
+                    <h2>營運預測資料</h2>
+                    <button class="btn btn-primary" id="save-projection-btn">儲存修改</button>
+                </div>
+                <div class="investment-section" style="background:#f9f9f9;padding:1.5rem;border-radius:8px;margin-bottom:2rem;border:1px solid #ddd;display:grid;grid-template-columns:1fr 1fr;gap:2rem;">
+                    <div>
+                        <h3 style="margin-bottom:1rem;color:#333;font-size:1.2rem;">初期投入資金估算</h3>
+                        <table style="width:100%;">
+                            <tbody>
+                                <tr><td style="padding:0.5rem 0;"><strong>裝潢與設計工程</strong></td><td><input type="number" id="inv-decoration" class="form-control" style="width:100%;"></td></tr>
+                                <tr><td style="padding:0.5rem 0;"><strong>生財設備與餐具</strong></td><td><input type="number" id="inv-equipment" class="form-control" style="width:100%;"></td></tr>
+                                <tr><td style="padding:0.5rem 0;"><strong>租金押金 (系統連動)</strong></td><td><input type="number" id="inv-deposit" class="form-control" style="width:100%;" disabled></td></tr>
+                                <tr><td style="padding:0.5rem 0;"><strong>雜支與開辦費</strong></td><td><input type="number" id="inv-misc" class="form-control" style="width:100%;"></td></tr>
+                                <tr><td style="padding:0.5rem 0;"><strong>預備週轉金</strong></td><td><input type="number" id="inv-working-capital" class="form-control" style="width:100%;"></td></tr>
+                                <tr style="background-color:#ffe4b5;"><td style="padding:0.5rem;"><strong>總計開辦資金</strong></td><td style="padding:0.5rem;"><strong id="inv-total">NT$ 0</strong></td></tr>
+                                <tr style="background-color:#e0ffff;"><td style="padding:0.5rem;"><strong>預估回收期 (ROI)</strong></td><td style="padding:0.5rem;"><strong id="inv-roi" style="color:#0066cc;">計算中...</strong></td></tr>
+                            </tbody>
+                        </table>
                     </div>
-                    
-                    <!-- Cart Side -->
-                    <div style="background: #f9f9f9; padding: 1rem; border-radius: 8px; border: 1px solid #ddd; display: flex; flex-direction: column;">
-                        <h2 style="margin-bottom: 1rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem;">結帳明細</h2>
-                        
-                        <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
-                            <label><input type="radio" name="order-type" value="內用" checked> 內用</label>
-                            <label><input type="radio" name="order-type" value="外帶"> 外帶</label>
-                            <span style="margin-left: auto;">人數：</span>
-                            <input type="number" id="pos-guests" class="form-control" style="width: 60px; padding: 0.2rem;" value="1" min="1">
-                        </div>
-
-                        <div id="pos-cart-items" style="flex-grow: 1; overflow-y: auto; margin-bottom: 1rem; border-bottom: 2px solid #eee;">
-                            <!-- Cart items injected here -->
-                        </div>
-                        
-                        <div style="margin-top: auto;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span>小計：</span>
-                                <span id="pos-subtotal">NT$ 0</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                <span>折扣：</span>
-                                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span>- NT$</span>
-                                    <input type="number" id="pos-discount" class="form-control" style="width: 80px; padding: 0.2rem;" value="0" min="0">
-                                </div>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; margin-bottom: 1rem; color: #e65100;">
-                                <span>總計：</span>
-                                <span id="pos-total">NT$ 0</span>
-                            </div>
-                            <button id="pos-checkout-btn" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.2rem; background: #e65100; border: none;">結帳 (Checkout)</button>
-                        </div>
+                    <div>
+                        <h3 style="margin-bottom:1rem;text-align:center;color:#333;font-size:1.2rem;">資金分配比例</h3>
+                        <div style="height:250px;display:flex;justify-content:center;"><canvas id="investmentChart"></canvas></div>
+                    </div>
+                </div>
+                <h3 style="margin-bottom:1rem;color:#333;font-size:1.2rem;">營運條件與收支預估 (3年)</h3>
+                <div style="overflow-x:auto;margin-bottom:2rem;">
+                    <table id="projection-table" style="min-width:800px;">
+                        <thead><tr><th>項目 / 年度</th><th>第 1 年</th><th>第 2 年</th><th>第 3 年</th></tr></thead>
+                        <tbody id="projection-body"></tbody>
+                    </table>
+                </div>
+                <div class="dashboard-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem;">
+                    <div class="chart-container" style="background:#fff;padding:1.5rem;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                        <h3 style="margin-bottom:1rem;text-align:center;">營收與成本趨勢 (年)</h3>
+                        <canvas id="revenueCostChart"></canvas>
+                    </div>
+                    <div class="chart-container" style="background:#fff;padding:1.5rem;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                        <h3 style="margin-bottom:1rem;text-align:center;">淨利率趨勢</h3>
+                        <canvas id="profitMarginChart"></canvas>
+                    </div>
+                    <div class="chart-container" style="background:#fff;padding:1.5rem;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.05);grid-column:1/-1;">
+                        <h3 style="margin-bottom:1rem;text-align:center;">成本結構分析 (第 3 年預估)</h3>
+                        <div style="height:300px;display:flex;justify-content:center;"><canvas id="costStructureChart"></canvas></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Settings Tab -->
-            <div id="settings-tab" class="tab-content" style="display: none;">
-                <div class="admin-header" style="margin-bottom: 1rem;">
+            <!-- ===== SETTINGS TAB ===== -->
+            <div id="settings-tab" class="tab-content">
+                <div class="admin-header">
                     <h2>基本設定</h2>
                     <button class="btn btn-primary" id="save-settings-btn">儲存設定</button>
                 </div>
-                
-                <div style="background: #fff; padding: 1.5rem; border-radius: 8px; border: 1px solid #ddd;">
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333;">店鋪名稱：</label>
-                        <input type="text" id="setting-shop-name" class="form-control" style="width: 100%; max-width: 400px;" placeholder="例如：毛孩窩">
-                        <p style="color: #888; font-size: 0.9rem; margin-top: 0.5rem;">修改後，前台與後台的店名將會同步更新。</p>
+                <div style="background:#fff;padding:1.5rem;border-radius:12px;border:1px solid #ddd;">
+                    <div class="form-group">
+                        <label style="font-weight:bold;">店鋪名稱：</label>
+                        <input type="text" id="setting-shop-name" class="form-control" style="max-width:400px;" placeholder="例如：毛孩窩">
+                        <p style="color:#888;font-size:0.9rem;margin-top:0.5rem;">修改後，前台與後台的店名將會同步更新。</p>
+                    </div>
+                    <hr style="margin:1.5rem 0; border:none; border-top:1px solid #eee;">
+                    <h3 style="margin-bottom:1rem;font-size:1rem;">🖨️ 硬體裝置說明</h3>
+                    <div style="background:#f8f9fa;border-radius:10px;padding:1rem;font-size:0.9rem;color:#555;">
+                        <p><strong>條碼讀取機</strong>：插入 USB 後，掃描結果會直接輸入至當前選中的文字框，無需額外設定。</p>
+                        <p style="margin-top:0.5rem;"><strong>標籤貼紙列印機 / 發票機</strong>：使用各品項「列印」按鈕，透過瀏覽器列印對話框輸出至已連接的印表機。</p>
+                        <p style="margin-top:0.5rem;"><strong>建議使用 Chrome / Edge 瀏覽器</strong>，以獲得最佳相容性。</p>
                     </div>
                 </div>
             </div>
 
+        </div><!-- /admin-container -->
+
+        <!-- History List Modal -->
+        <div class="modal-overlay" id="history-list-modal" style="display:none; z-index: 1000;">
+            <div class="modal-content" style="max-width:800px; width:90%;">
+                <div class="modal-header">
+                    <h3>📖 歷史結算紀錄</h3>
+                    <button class="close-btn" id="close-history-list-btn">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height:60vh; overflow-y:auto;">
+                    <table style="width:100%; border-collapse:collapse; text-align:left;">
+                        <thead>
+                            <tr style="border-bottom:2px solid #eee;">
+                                <th style="padding:0.75rem;">結算日期 (時間)</th>
+                                <th style="padding:0.75rem;">總營業額</th>
+                                <th style="padding:0.75rem;">實際匯款</th>
+                                <th style="padding:0.75rem; text-align:center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-list-body"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+
+        <!-- History Detail Modal -->
+        <div class="modal-overlay" id="history-detail-modal" style="display:none; z-index: 1010;">
+            <div class="modal-content" style="max-width:900px; width:95%; max-height:90vh; overflow-y:auto; position:relative;">
+                <div class="modal-header no-print">
+                    <h3 id="hist-detail-title">結算明細</h3>
+                    <div>
+                        <button class="btn btn-success" id="print-hist-btn" style="margin-right:1rem;">🖨️ 列印</button>
+                        <button class="close-btn" id="close-history-detail-btn">&times;</button>
+                    </div>
+                </div>
+                <div class="modal-body" id="hist-detail-print-area" style="background:#f4f6f8; padding:1.5rem; border-radius:8px;">
+                    <!-- Filled dynamically by JS -->
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script src="js/data.js"></script>

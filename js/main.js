@@ -1,144 +1,467 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- State ---
+    // ===== STATE =====
     let menu = getMenu();
     let cart = getCart();
-    let currentCategory = 'all';
+    let currentCategory = 'drinks';
+    let pendingSetMealItem = null;
+    let selectedAddons = [];   // array of selected addons (drinks + set meal options)
+    let codeReader = null;
+    let cameraStream = null;
 
-    // --- DOM Elements ---
+    // ===== DOM =====
     const menuContainer = document.getElementById('menu-container');
-    const categoryNav = document.getElementById('category-nav');
+    const categoryTabs = document.getElementById('category-tabs');
     const cartCount = document.getElementById('cart-count');
     const cartSidebar = document.getElementById('cart-sidebar');
     const openCartBtn = document.getElementById('open-cart-btn');
     const closeCartBtn = document.getElementById('close-cart-btn');
-    const cartItemsContainer = document.getElementById('cart-items-container');
+    const cartItemsCont = document.getElementById('cart-items-container');
     const cartTotal = document.getElementById('cart-total');
     const checkoutBtn = document.getElementById('checkout-btn');
+    const tableInput = document.getElementById('table-number-input');
+    const tableHint = document.getElementById('table-hint');
 
-    // --- Initialization ---
+    // Invoice
+    const invPaper = document.getElementById('inv-paper');
+    const invCarrier = document.getElementById('inv-carrier');
+    const invUniform = document.getElementById('inv-uniform');
+    const carrierRow = document.getElementById('invoice-carrier-row');
+    const uniformRow = document.getElementById('invoice-uniform-row');
+    const carrierInput = document.getElementById('carrier-number');
+    const uniformInput = document.getElementById('uniform-number');
+    const scanBtn = document.getElementById('scan-carrier-btn');
+
+    // Set Meal Modal
+    const setmealModal = document.getElementById('setmeal-modal');
+    const closeSetmealBtn = document.getElementById('close-setmeal-btn');
+    const setmealItemName = document.getElementById('setmeal-item-name');
+    const setmealBasePrice = document.getElementById('setmeal-base-price');
+    const setmealOptsList = document.getElementById('setmeal-options-list');
+    const confirmSetmealBtn = document.getElementById('confirm-setmeal-btn');
+
+    // Camera Modal
+    const cameraModal = document.getElementById('camera-modal');
+    const closeCameraBtn = document.getElementById('close-camera-btn');
+    const cameraVideo = document.getElementById('camera-video');
+    const cameraResult = document.getElementById('camera-result');
+
+    // Success Modal
+    const successModal = document.getElementById('success-modal');
+    const successOrderId = document.getElementById('success-order-id');
+    const successTable = document.getElementById('success-table');
+    const closeSuccessBtn = document.getElementById('close-success-btn');
+
+    // ===== INIT =====
+    renderCategoryTabs();
     renderMenu();
     updateCartUI();
+    initShopName();
 
-    // --- Event Listeners ---
-    categoryNav.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A') {
-            e.preventDefault();
-            // Update active class
-            categoryNav.querySelectorAll('a').forEach(a => a.classList.remove('active'));
-            e.target.classList.add('active');
-            
-            currentCategory = e.target.dataset.category;
-            renderMenu();
-        }
-    });
+    // ===== CATEGORY TABS =====
+    function renderCategoryTabs() {
+        categoryTabs.innerHTML = '';
+        CATEGORIES.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'cat-tab-btn' + (cat.id === currentCategory ? ' active' : '');
+            btn.dataset.cat = cat.id;
+            btn.innerHTML = `${cat.icon} ${cat.label}`;
+            btn.addEventListener('click', () => {
+                currentCategory = cat.id;
+                document.querySelectorAll('.cat-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderMenu();
+            });
+            categoryTabs.appendChild(btn);
+        });
+    }
 
-    openCartBtn.addEventListener('click', () => {
-        cartSidebar.classList.add('open');
-    });
-
-    closeCartBtn.addEventListener('click', () => {
-        cartSidebar.classList.remove('open');
-    });
-
-    checkoutBtn.addEventListener('click', () => {
-        if (cart.length === 0) {
-            alert('購物車是空的喔！先挑選一些美味的餐點吧。');
-            return;
-        }
-        alert('感謝您的訂購！您的餐點已經開始準備囉 🐾');
-        cart = [];
-        saveCart(cart);
-        updateCartUI();
-        cartSidebar.classList.remove('open');
-    });
-
-    // --- Functions ---
+    // ===== MENU RENDER =====
     function renderMenu() {
         menuContainer.innerHTML = '';
-        
-        const filteredMenu = currentCategory === 'all' 
-            ? menu 
-            : menu.filter(item => item.category === currentCategory);
+        const filtered = menu.filter(item => item.category === currentCategory);
+        const catInfo = getCategoryInfo(currentCategory);
 
-        filteredMenu.forEach(item => {
+        if (filtered.length === 0) {
+            menuContainer.innerHTML = '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:2rem;">此分類目前尚無品項</p>';
+            return;
+        }
+
+        filtered.forEach(item => {
             const card = document.createElement('div');
             card.className = 'menu-item';
+            const hasSetMeal = catInfo.hasSetMeal;
             card.innerHTML = `
-                <img src="${item.image}" alt="${item.name}">
-                <div class="item-info">
-                    <h3>${item.name}</h3>
-                    <p>${item.description}</p>
-                    <div class="item-bottom">
-                        <span class="price">NT$ ${item.price}</span>
-                        <button class="add-btn" onclick="addToCart('${item.id}')">加入購物車</button>
+                <div class="menu-item-name">${item.name}</div>
+                <div class="menu-item-desc">${item.description || ''}</div>
+                <div class="menu-item-bottom">
+                    <span class="price">NT$ ${item.price}</span>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                        ${hasSetMeal ? '<span class="set-meal-badge">可加套餐</span>' : ''}
+                        <button class="add-btn" data-id="${item.id}">加入購物車</button>
                     </div>
                 </div>
             `;
+            card.querySelector('.add-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleAddItem(item);
+            });
             menuContainer.appendChild(card);
         });
     }
 
-    window.addToCart = function(itemId) {
-        const item = menu.find(m => m.id === itemId);
-        if (!item) return;
-
-        const existingCartItem = cart.find(c => c.id === itemId);
-        if (existingCartItem) {
-            existingCartItem.quantity += 1;
+    // ===== ADD ITEM =====
+    function handleAddItem(item) {
+        const catInfo = getCategoryInfo(item.category);
+        if (catInfo.hasSetMeal || item.category === 'drinks') {
+            openSetMealModal(item);
         } else {
-            cart.push({ ...item, quantity: 1 });
+            addToCart(item, [], false);
         }
-        
+    }
+
+    // ===== SET MEAL MODAL (multi-select) =====
+    const smPreview = document.getElementById('sm-selected-preview');
+
+    function makeAddonEl(opt, isDrinkSize = false) {
+        const el = document.createElement('div');
+        el.className = 'setmeal-option';
+        el.innerHTML = `
+            <div class="opt-left">
+                <div class="opt-check"></div>
+                <span class="opt-name">${opt.name}</span>
+            </div>
+            <span class="opt-price">+NT$ ${opt.price}</span>
+        `;
+        el.addEventListener('click', () => {
+            const idx = selectedAddons.findIndex(a => a.id === opt.id);
+            if (isDrinkSize) {
+                // For drink sizes on the drink item itself: single-select
+                selectedAddons = selectedAddons.filter(a => !a._isDrinkSize);
+                if (idx === -1) {
+                    selectedAddons.push({ ...opt, _isDrinkSize: true });
+                    el.classList.add('selected');
+                    setmealOptsList.querySelectorAll('.drink-size-opt').forEach(e => {
+                        if (e !== el) e.classList.remove('selected');
+                    });
+                }
+            } else {
+                // Multi-select toggle
+                if (idx === -1) {
+                    selectedAddons.push(opt);
+                    el.classList.add('selected');
+                } else {
+                    selectedAddons.splice(idx, 1);
+                    el.classList.remove('selected');
+                }
+            }
+            updateSmPreview();
+        });
+        return el;
+    }
+
+    function updateSmPreview() {
+        if (!smPreview) return;
+        if (selectedAddons.length === 0) {
+            smPreview.classList.remove('show');
+            smPreview.textContent = '';
+            return;
+        }
+        const totalAdd = selectedAddons.reduce((s, a) => s + (a.price || 0), 0);
+        smPreview.textContent = '已選：' + selectedAddons.map(a => a.name).join('、') + `（+NT$ ${totalAdd}）`;
+        smPreview.classList.add('show');
+    }
+
+    function openSetMealModal(item) {
+        pendingSetMealItem = item;
+        selectedAddons = [];
+        setmealItemName.textContent = item.name;
+        setmealBasePrice.textContent = `NT$ ${item.price}`;
+        setmealOptsList.innerHTML = '';
+        if (smPreview) { smPreview.classList.remove('show'); smPreview.textContent = ''; }
+
+        const ecoCupContainer = document.getElementById('eco-cup-container');
+        const ecoCupCheckbox = document.getElementById('eco-cup-checkbox');
+        if (ecoCupCheckbox) ecoCupCheckbox.checked = false;
+
+        if (item.category === 'drinks') {
+            // Drinks: single-select size + eco cup
+            document.getElementById('sm-title').textContent = '選擇容量（必選）';
+            if (ecoCupContainer) ecoCupContainer.style.display = 'block';
+
+            const header = document.createElement('div');
+            header.className = 'sm-section-header';
+            header.textContent = '容量';
+            setmealOptsList.appendChild(header);
+
+            const sizes = getDrinkSizes();
+            sizes.forEach((opt, idx) => {
+                const el = makeAddonEl({ ...opt, _isDrinkSize: true }, true);
+                el.classList.add('drink-size-opt');
+                if (idx === 0) {
+                    el.classList.add('selected');
+                    selectedAddons.push({ ...opt, _isDrinkSize: true });
+                }
+                setmealOptsList.appendChild(el);
+            });
+            updateSmPreview();
+        } else {
+            // Food items: drinks section (multi) + set meal options (multi)
+            document.getElementById('sm-title').textContent = '加點項目（可複選）';
+            if (ecoCupContainer) ecoCupContainer.style.display = 'none';
+
+            // Section 1: Drinks from menu
+            const freshMenu = getMenu();
+            const drinkItems = freshMenu.filter(m => m.category === 'drinks');
+            if (drinkItems.length > 0) {
+                const h1 = document.createElement('div');
+                h1.className = 'sm-section-header';
+                h1.textContent = '☕ 加點飲品';
+                setmealOptsList.appendChild(h1);
+
+                drinkItems.forEach(drink => {
+                    const el = makeAddonEl({ id: 'drink_' + drink.id, name: drink.name, price: drink.price });
+                    setmealOptsList.appendChild(el);
+                });
+            }
+
+            // Section 2: Other set meal options
+            const allOpts = getSetMealOptions();
+            const opts = allOpts[item.category] || [];
+            if (opts.length > 0) {
+                const h2 = document.createElement('div');
+                h2.className = 'sm-section-header';
+                h2.textContent = '其他加點';
+                setmealOptsList.appendChild(h2);
+
+                opts.forEach(opt => {
+                    const el = makeAddonEl(opt);
+                    setmealOptsList.appendChild(el);
+                });
+            }
+        }
+
+        setmealModal.style.display = 'flex';
+    }
+
+    closeSetmealBtn.addEventListener('click', () => {
+        setmealModal.style.display = 'none';
+        pendingSetMealItem = null;
+    });
+
+    confirmSetmealBtn.addEventListener('click', () => {
+        if (!pendingSetMealItem) return;
+        const isEcoCup = document.getElementById('eco-cup-checkbox') ? document.getElementById('eco-cup-checkbox').checked : false;
+        addToCart(pendingSetMealItem, selectedAddons, isEcoCup);
+        setmealModal.style.display = 'none';
+        pendingSetMealItem = null;
+    });
+
+    // Click outside modal closes it
+    setmealModal.addEventListener('click', (e) => {
+        if (e.target === setmealModal) {
+            setmealModal.style.display = 'none';
+            pendingSetMealItem = null;
+        }
+    });
+
+    // ===== CART OPERATIONS =====
+    function addToCart(item, addons = [], isEcoCup = false) {
+        const addonKey = addons.map(a => a.id).sort().join('+');
+        const cartKey = item.id + '_' + (addonKey || 'none') + (isEcoCup ? '_eco' : '');
+        const existing = cart.find(c => c.cartKey === cartKey);
+        if (existing) {
+            existing.quantity += 1;
+        } else {
+            const addonsTotal = addons.reduce((s, a) => s + (a.price || 0), 0);
+            const finalPrice = item.price + addonsTotal - (isEcoCup ? 5 : 0);
+            cart.push({
+                cartKey,
+                id: item.id,
+                name: item.name,
+                category: item.category,
+                basePrice: item.price,
+                addons: addons,
+                isEcoCup: isEcoCup,
+                price: finalPrice,
+                quantity: 1
+            });
+        }
         saveCart(cart);
         updateCartUI();
-        
-        // Simple animation feedback
         cartSidebar.classList.add('open');
-        setTimeout(() => cartSidebar.classList.remove('open'), 1500);
-    };
+        setTimeout(() => cartSidebar.classList.remove('open'), 1800);
+    }
 
-    window.updateQuantity = function(itemId, delta) {
-        const cartItem = cart.find(c => c.id === itemId);
-        if (cartItem) {
-            cartItem.quantity += delta;
-            if (cartItem.quantity <= 0) {
-                cart = cart.filter(c => c.id !== itemId);
-            }
-            saveCart(cart);
-            updateCartUI();
-        }
+    window.updateQuantity = function (cartKey, delta) {
+        const idx = cart.findIndex(c => c.cartKey === cartKey);
+        if (idx === -1) return;
+        cart[idx].quantity += delta;
+        if (cart[idx].quantity <= 0) cart.splice(idx, 1);
+        saveCart(cart);
+        updateCartUI();
     };
 
     function updateCartUI() {
-        // Update count
-        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-        cartCount.textContent = totalItems;
+        // Count
+        const total = cart.reduce((s, i) => s + i.quantity, 0);
+        cartCount.textContent = total;
 
-        // Update items list
-        cartItemsContainer.innerHTML = '';
+        // Items
+        cartItemsCont.innerHTML = '';
         if (cart.length === 0) {
-            cartItemsContainer.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top: 2rem;">購物車目前空空的</p>';
+            cartItemsCont.innerHTML = '<p style="text-align:center;color:var(--text-muted);margin-top:2rem;">購物車目前空空的 🐾</p>';
         } else {
             cart.forEach(item => {
-                const cartItemEl = document.createElement('div');
-                cartItemEl.className = 'cart-item';
-                cartItemEl.innerHTML = `
+                const el = document.createElement('div');
+                el.className = 'cart-item';
+                const addonsHtml = (item.addons || []).map(a =>
+                    `<div class="setmeal-tag">+ ${a.name} (+NT$ ${a.price})</div>`
+                ).join('');
+                el.innerHTML = `
                     <div class="cart-item-info">
                         <h4>${item.name}</h4>
-                        <span class="price">NT$ ${item.price}</span>
+                        ${addonsHtml}
+                        ${item.isEcoCup ? `<div class="setmeal-tag" style="color:#2e7d32; background:#e8f5e9;">🌱 自備環保杯 (-NT$ 5)</div>` : ''}
+                        <span class="price" style="font-size:0.95rem;">NT$ ${item.price}</span>
                     </div>
                     <div class="cart-item-controls">
-                        <button class="qty-btn" onclick="updateQuantity('${item.id}', -1)">-</button>
+                        <button class="qty-btn" onclick="updateQuantity('${item.cartKey}', -1)">−</button>
                         <span>${item.quantity}</span>
-                        <button class="qty-btn" onclick="updateQuantity('${item.id}', 1)">+</button>
+                        <button class="qty-btn" onclick="updateQuantity('${item.cartKey}', 1)">+</button>
                     </div>
                 `;
-                cartItemsContainer.appendChild(cartItemEl);
+                cartItemsCont.appendChild(el);
             });
         }
 
-        // Update total
-        const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        cartTotal.textContent = `NT$ ${totalPrice}`;
+        // Total
+        const sum = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+        cartTotal.textContent = `NT$ ${sum}`;
+    }
+
+    // ===== CART OPEN/CLOSE =====
+    openCartBtn.addEventListener('click', () => cartSidebar.classList.add('open'));
+    closeCartBtn.addEventListener('click', () => cartSidebar.classList.remove('open'));
+
+    // ===== INVOICE RADIO =====
+    [invPaper, invCarrier, invUniform].forEach(radio => {
+        radio.addEventListener('change', () => {
+            carrierRow.style.display = invCarrier.checked ? 'flex' : 'none';
+            uniformRow.style.display = invUniform.checked ? 'flex' : 'none';
+        });
+    });
+
+    // ===== CAMERA SCAN =====
+    scanBtn.addEventListener('click', openCamera);
+    closeCameraBtn.addEventListener('click', closeCamera);
+    cameraModal.addEventListener('click', e => { if (e.target === cameraModal) closeCamera(); });
+
+    function openCamera() {
+        cameraResult.textContent = '';
+        cameraModal.style.display = 'flex';
+        cameraStream = null;
+
+        if (!window.ZXing) {
+            alert('條碼掃描元件載入中，請稍後再試');
+            cameraModal.style.display = 'none';
+            return;
+        }
+
+        const hints = new Map();
+        codeReader = new ZXing.BrowserMultiFormatReader(hints);
+        codeReader.decodeFromVideoDevice(null, 'camera-video', (result, err) => {
+            if (result) {
+                carrierInput.value = result.getText();
+                cameraResult.textContent = '✅ 掃描成功：' + result.getText();
+                setTimeout(closeCamera, 1200);
+            }
+        });
+    }
+
+    function closeCamera() {
+        if (codeReader) {
+            try { codeReader.reset(); } catch (e) { }
+            codeReader = null;
+        }
+        if (cameraVideo.srcObject) {
+            cameraVideo.srcObject.getTracks().forEach(t => t.stop());
+            cameraVideo.srcObject = null;
+        }
+        cameraModal.style.display = 'none';
+    }
+
+    // ===== CHECKOUT =====
+    checkoutBtn.addEventListener('click', () => {
+        if (cart.length === 0) {
+            alert('購物車是空的喔！先挑選一些美味的餐點吧 🐾');
+            return;
+        }
+        const tableNum = tableInput.value.trim();
+        if (!tableNum) {
+            tableHint.style.display = 'inline';
+            tableInput.focus();
+            return;
+        }
+        tableHint.style.display = 'none';
+
+        // Invoice info
+        let invoiceType = 'paper';
+        let invoiceData = '';
+        if (invCarrier.checked) {
+            invoiceType = 'carrier';
+            invoiceData = carrierInput.value.trim();
+        } else if (invUniform.checked) {
+            invoiceType = 'uniform';
+            invoiceData = uniformInput.value.trim();
+        }
+
+        const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+
+        const order = {
+            id: 'ORD' + Date.now(),
+            date: new Date().toISOString(),
+            tableNumber: tableNum,
+            type: '內用',
+            source: 'frontend',
+            items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.quantity, addons: i.addons || [] })),
+            subtotal,
+            discount: 0,
+            total: subtotal,
+            guests: 1,
+            invoiceType,
+            invoiceData
+        };
+
+        // Save to PosQueue (Wait for POS checkout)
+        const posQueue = getPosQueueOrders();
+        posQueue.push(order);
+        savePosQueueOrders(posQueue);
+
+        // Show success
+        successOrderId.textContent = '線上點單已送出，請至櫃檯結帳';
+        successTable.textContent = `🪑 桌號 ${tableNum}`;
+        successModal.style.display = 'flex';
+
+        // Clear cart
+        cart = [];
+        saveCart(cart);
+        updateCartUI();
+        cartSidebar.classList.remove('open');
+        carrierInput.value = '';
+        uniformInput.value = '';
+        invPaper.checked = true;
+        carrierRow.style.display = 'none';
+        uniformRow.style.display = 'none';
+    });
+
+    closeSuccessBtn.addEventListener('click', () => {
+        successModal.style.display = 'none';
+    });
+
+    // ===== SHOP NAME =====
+    function initShopName() {
+        const settings = getSettings();
+        document.querySelectorAll('.shop-name-display').forEach(el => el.textContent = settings.shopName);
+        document.title = `${settings.shopName} | 寵物友善咖啡廳`;
     }
 });
