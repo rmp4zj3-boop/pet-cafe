@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+    function getLocalDateStr(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        const tzoffset = d.getTimezoneOffset() * 60000;
+        return (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+    }
+
     let menu = getMenu();
     let currentSmCategory = 'toast';
     let setMealOptions = getSetMealOptions();
@@ -18,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const descInput = document.getElementById('item-description');
     const priceInput = document.getElementById('item-price');
     const imageInput = document.getElementById('item-image');
+    const syncNotesCheckbox = document.getElementById('sync-notes-to-category');
 
     // File upload elements
     const imageFileInput = document.getElementById('item-image-file');
@@ -36,10 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const catInfo = getCategoryInfo(item.category);
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${item.name || '未命名'}</strong></td>
+                <td>
+                    <strong>${item.name || '未命名'}</strong>
+                    ${item.isPreparing ? '<span style="background:#e65100;color:white;padding:2px 6px;border-radius:4px;font-size:0.75rem;margin-left:5px;">準備中</span>' : ''}
+                </td>
                 <td>${catInfo.icon} ${catInfo.label}</td>
                 <td>NT$ ${item.price || 0}</td>
                 <td class="actions">
+                    <button class="btn" style="background:${item.isPreparing ? '#e65100' : '#4caf50'}; color:white; padding:0.25rem 0.5rem; font-size:0.85rem;" onclick="togglePreparing('${item.id}')">
+                        ${item.isPreparing ? '🟢 恢復點購' : '🟠 標記準備中'}
+                    </button>
                     <button class="btn btn-primary" onclick="editItem('${item.id}')">編輯</button>
                     <button class="btn btn-danger" onclick="deleteItem('${item.id}')">刪除</button>
                 </td>
@@ -47,6 +62,16 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.appendChild(tr);
         });
     }
+
+    window.togglePreparing = function (id) {
+        const item = menu.find(m => m.id === id);
+        if (!item) return;
+        item.isPreparing = !item.isPreparing;
+        saveMenu(menu);
+        renderAdminMenu();
+        renderPOSMenu(); // update POS if open
+    };
+
     renderAdminMenu();
 
     function compressImage(base64Str, maxWidth, maxHeight, callback) {
@@ -166,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         imagePreview.src = '';
         imagePreviewContainer.style.display = 'none';
         notesContainer.innerHTML = '';
+        if (syncNotesCheckbox) syncNotesCheckbox.checked = false;
         formTitle.textContent = '新增品項';
         itemFormContainer.style.display = 'block';
     });
@@ -177,14 +203,18 @@ document.addEventListener('DOMContentLoaded', () => {
     itemForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
+        const existingItem = idInput.value ? menu.find(m => m.id === idInput.value) : null;
+        const isPreparing = existingItem ? (existingItem.isPreparing || false) : false;
+
         const noteGroups = getNoteGroupsFromForm();
         const newItem = {
             id: idInput.value || Date.now().toString(),
             name: nameInput.value || '',
-            category: categoryInput.value || 'drinks',
+            category: categoryInput.value || 'coffee',
             description: descInput.value || '',
             price: parseInt(priceInput.value, 10) || 0,
             image: imageInput.value || '',
+            isPreparing: isPreparing,
             notes: noteGroups,
             note: noteGroups.map(g => g.options.join(',')).join(',')
         };
@@ -194,6 +224,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (index !== -1) menu[index] = newItem;
         } else {
             menu.push(newItem);
+        }
+
+        if (syncNotesCheckbox && syncNotesCheckbox.checked) {
+            menu.forEach(item => {
+                if (item.category === newItem.category) {
+                    item.notes = JSON.parse(JSON.stringify(noteGroups));
+                    item.note = noteGroups.map(g => g.options.join(',')).join(',');
+                }
+            });
         }
 
         saveMenu(menu);
@@ -212,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         descInput.value = item.description;
         priceInput.value = item.price;
         imageInput.value = item.image || '';
+        if (syncNotesCheckbox) syncNotesCheckbox.checked = false;
 
         if (item.image) {
             imagePreview.src = item.image;
@@ -406,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const posClearBtn = document.getElementById('pos-clear-btn');
     const discBtns = document.querySelectorAll('.disc-btn');
 
-    let currentPOSCategory = 'drinks';
+    let currentPOSCategory = 'coffee';
     let posCart = [];
     let posDiscountRate = 1.0;
 
@@ -538,12 +578,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const filtered = menu.filter(item => item.category === currentPOSCategory);
         filtered.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'pos-menu-item';
-            div.innerHTML = `
-                <div class="pos-item-name">${item.name}</div>
-                <div class="pos-item-price">NT$ ${item.price}</div>
-            `;
-            div.addEventListener('click', () => handlePOSAddItem(item));
+            div.className = 'pos-menu-item' + (item.isPreparing ? ' preparing' : '');
+            if (item.isPreparing) {
+                div.style.opacity = '0.5';
+                div.style.cursor = 'not-allowed';
+                div.style.background = '#f1f1f1';
+                div.innerHTML = `
+                    <div class="pos-item-name">${item.name}</div>
+                    <div class="pos-item-price" style="color:#d32f2f; font-weight:bold;">準備中</div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="pos-item-name">${item.name}</div>
+                    <div class="pos-item-price">NT$ ${item.price}</div>
+                `;
+                div.addEventListener('click', () => handlePOSAddItem(item));
+            }
             posMenuGrid.appendChild(div);
         });
     }
@@ -551,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handlePOSAddItem(item) {
         const catInfo = getCategoryInfo(item.category);
         const hasNotes = (item.notes && item.notes.length > 0) || (item.note && item.note.trim().length > 0);
-        if (catInfo.hasSetMeal || item.category === 'drinks' || hasNotes) {
+        if (catInfo.hasSetMeal || ['drinks', 'coffee', 'tea'].includes(item.category) || hasNotes) {
             openPOSSetMealModal(item);
         } else {
             addToPOSCart(item, null, false);
@@ -671,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ecoCupCheckbox = document.getElementById('pos-eco-cup-checkbox');
         if (ecoCupCheckbox) ecoCupCheckbox.checked = false;
 
-        if (item.category === 'drinks') {
+        if (['drinks', 'coffee', 'tea'].includes(item.category)) {
             document.getElementById('pos-sm-title').textContent = '選擇容量（必選）';
             if (ecoCupContainer) ecoCupContainer.style.display = 'block';
 
@@ -695,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ecoCupContainer) ecoCupContainer.style.display = 'none';
 
             // Section 1: Drinks (single-select; shows drink's note groups dynamically)
-            const drinkItems = menu.filter(m => m.category === 'drinks');
+            const drinkItems = menu.filter(m => ['drinks', 'coffee', 'tea'].includes(m.category) && !m.isPreparing);
             const ddiscounts = getDrinkDiscounts();
             const drinkDiscount = ddiscounts[item.category] || 0;
 
@@ -938,9 +988,18 @@ document.addEventListener('DOMContentLoaded', () => {
         discBtns[0].click();
         renderPOSCart();
 
-        // Auto update kitchen if it's open
+        // Auto update tabs if active
         if (document.getElementById('kitchen-tab').classList.contains('active')) {
             renderKitchen();
+        }
+        if (document.getElementById('settlement-tab').classList.contains('active')) {
+            renderSettlement();
+        }
+        if (document.getElementById('revenue-tab').classList.contains('active')) {
+            renderRevenue();
+        }
+        if (document.getElementById('projection-tab').classList.contains('active')) {
+            renderProjections();
         }
     });
 
@@ -976,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const menuItem = menu.find(m => m.id === item.id);
                     const cat = item.category || (menuItem ? menuItem.category : '');
 
-                    if (cat === 'drinks') {
+                    if (['drinks', 'coffee', 'tea'].includes(cat)) {
                         const sizeAddon = (item.addons || []).find(a => a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL');
                         const sizeStr = sizeAddon ? ` (${sizeAddon.name})` : '';
                         const otherAddons = (item.addons || []).filter(a => !(a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL'));
@@ -1015,19 +1074,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                 });
+                const hasDrinks = drinksArray.length > 0;
+                const hasFood = foodArray.length > 0;
+                const isDrinksServed = !!order.drinksServed;
+                const isFoodServed = !!order.foodServed;
 
                 let itemsHtml = '';
-                if (drinksArray.length > 0) {
-                    itemsHtml += `<div style="font-weight:bold; color:#1976d2; margin: 0.5rem 0 0.25rem 0; font-size:0.85rem; border-bottom:1px dashed #1976d2; padding-bottom: 2px;">☕ 飲品/飲料區</div>`;
-                    itemsHtml += '<ul class="order-items-list" style="margin-bottom: 0.5rem; padding-left: 1.2rem;">';
+                if (hasDrinks) {
+                    itemsHtml += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin: 0.5rem 0 0.25rem 0; border-bottom:1px dashed #1976d2; padding-bottom: 2px;">
+                            <span style="font-weight:bold; color:#1976d2; font-size:0.85rem;">☕ 飲品/飲料區 ${isDrinksServed ? '✅ 已出餐' : ''}</span>
+                            ${!isDrinksServed ? `<button class="serve-btn" style="padding:0.2rem 0.5rem; font-size:0.75rem; background:#1976d2;" onclick="servePartialOrder(${idx}, 'drinks')">✅ 飲料出餐</button>` : ''}
+                        </div>
+                        <ul class="order-items-list" style="margin-bottom: 0.5rem; padding-left: 1.2rem; ${isDrinksServed ? 'text-decoration: line-through; opacity: 0.5;' : ''}">
+                    `;
                     drinksArray.forEach(d => {
                         itemsHtml += `<li><strong>${d.qty}x</strong> ${d.name}</li>`;
                     });
                     itemsHtml += '</ul>';
                 }
-                if (foodArray.length > 0) {
-                    itemsHtml += `<div style="font-weight:bold; color:#d84315; margin: 0.5rem 0 0.25rem 0; font-size:0.85rem; border-bottom:1px dashed #d84315; padding-bottom: 2px;">🍔 餐點/主食區</div>`;
-                    itemsHtml += '<ul class="order-items-list" style="margin-bottom: 0.5rem; padding-left: 1.2rem;">';
+
+                if (hasFood) {
+                    itemsHtml += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin: 0.5rem 0 0.25rem 0; border-bottom:1px dashed #d84315; padding-bottom: 2px;">
+                            <span style="font-weight:bold; color:#d84315; font-size:0.85rem;">🍔 餐點/今日特餐區 ${isFoodServed ? '✅ 已出餐' : ''}</span>
+                            ${!isFoodServed ? `<button class="serve-btn" style="padding:0.2rem 0.5rem; font-size:0.75rem; background:#d84315;" onclick="servePartialOrder(${idx}, 'food')">✅ 餐點出餐</button>` : ''}
+                        </div>
+                        <ul class="order-items-list" style="margin-bottom: 0.5rem; padding-left: 1.2rem; ${isFoodServed ? 'text-decoration: line-through; opacity: 0.5;' : ''}">
+                    `;
                     foodArray.forEach(f => {
                         itemsHtml += `<li><strong>${f.qty}x</strong> ${f.name}</li>`;
                     });
@@ -1035,16 +1109,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const badgeClass = order.type === '內用' ? 'dine-in' : 'takeout';
+                const guestStr = order.guests ? ` (${order.guests}人)` : '';
 
                 card.innerHTML = `
                     <div class="order-card-header">
-                        <span class="order-table-num">🪑 ${order.tableNumber}</span>
+                        <span class="order-table-num">🪑 ${order.tableNumber}${guestStr}</span>
                         <span class="order-time">${formatTime(order.date)}</span>
                     </div>
                     ${itemsHtml}
-                    <div class="order-card-footer" style="margin-top:0.75rem; padding-top:0.5rem; border-top: 1px solid #eee;">
+                    <div class="order-card-footer" style="margin-top:0.75rem; padding-top:0.5rem; border-top: 1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
                         <span class="order-type-badge ${badgeClass}">${order.type}</span>
-                        <button class="serve-btn" onclick="serveOrder(${idx})">✅ 出餐</button>
+                        <span style="font-size:0.8rem; color:#888;">
+                            ${(hasDrinks && !isDrinksServed) ? '🍹 待出飲料 ' : ''}
+                            ${(hasFood && !isFoodServed) ? '🍛 待出餐點' : ''}
+                        </span>
                     </div>
                 `;
                 pendingList.appendChild(card);
@@ -1068,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const menuItem = menu.find(m => m.id === item.id);
                     const cat = item.category || (menuItem ? menuItem.category : '');
 
-                    if (cat === 'drinks') {
+                    if (['drinks', 'coffee', 'tea'].includes(cat)) {
                         const sizeAddon = (item.addons || []).find(a => a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL');
                         const sizeStr = sizeAddon ? ` (${sizeAddon.name})` : '';
                         const otherAddons = (item.addons || []).filter(a => !(a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL'));
@@ -1138,13 +1216,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    window.servePartialOrder = function (idx, type) {
+        const pending = getPendingOrders();
+        const order = pending[idx];
+        if (!order) return;
+
+        // Separate items to check what exists
+        const drinksArray = [];
+        const foodArray = [];
+        order.items.forEach(item => {
+            const menuItem = menu.find(m => m.id === item.id);
+            const cat = item.category || (menuItem ? menuItem.category : '');
+            if (['drinks', 'coffee', 'tea'].includes(cat)) {
+                drinksArray.push(item);
+            } else {
+                foodArray.push(item);
+                const drinkAddons = (item.addons || []).filter(a => a.id && a.id.startsWith('drink_'));
+                if (drinkAddons.length > 0) {
+                    drinksArray.push(...drinkAddons);
+                }
+            }
+        });
+
+        const hasDrinks = drinksArray.length > 0;
+        const hasFood = foodArray.length > 0;
+
+        if (type === 'drinks') {
+            order.drinksServed = true;
+        } else if (type === 'food') {
+            order.foodServed = true;
+        }
+
+        const drinksCompleted = !hasDrinks || order.drinksServed;
+        const foodCompleted = !hasFood || order.foodServed;
+
+        if (drinksCompleted && foodCompleted) {
+            pending.splice(idx, 1);
+            const served = getServedOrders();
+            served.push(order);
+            savePendingOrders(pending);
+            saveServedOrders(served);
+        } else {
+            savePendingOrders(pending);
+        }
+        renderKitchen();
+    };
+
     window.serveOrder = function (idx) {
         const pending = getPendingOrders();
         const served = getServedOrders();
         const order = pending.splice(idx, 1)[0];
-        served.push(order);
-        savePendingOrders(pending);
-        saveServedOrders(served);
+        if (order) {
+            order.drinksServed = true;
+            order.foodServed = true;
+            served.push(order);
+            savePendingOrders(pending);
+            saveServedOrders(served);
+        }
         renderKitchen();
     };
 
@@ -1191,6 +1319,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.getElementById('revenue-tab').classList.contains('active')) {
                 renderRevenue();
             }
+            if (document.getElementById('settlement-tab').classList.contains('active')) {
+                renderSettlement();
+            }
+            if (document.getElementById('projection-tab').classList.contains('active')) {
+                renderProjections();
+            }
         }, 'petCafeOrders');
 
         // 菜單即時更新（後台編輯由自己觸發，主要是同步給其他後台裝置）
@@ -1226,15 +1360,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== REVENUE =====
     function renderRevenue() {
         const orders = getOrders();
-        const todayStr = new Date().toISOString().split('T')[0];
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        const todayStr = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
         const monthStr = todayStr.substring(0, 7);
 
         let todayTotal = 0, todayOrders = 0, todayGuests = 0;
         let monthTotal = 0, monthOrders = 0, monthGuests = 0;
 
         orders.forEach(o => {
-            const dateStr = o.date.split('T')[0];
-            const mStr = o.date.substring(0, 7);
+            const dateStr = getLocalDateStr(o.date);
+            const mStr = dateStr.substring(0, 7);
             const g = o.guests || 1;
             if (dateStr === todayStr) { todayTotal += o.total; todayOrders++; todayGuests += g; }
             if (mStr === monthStr) { monthTotal += o.total; monthOrders++; monthGuests += g; }
@@ -1285,7 +1420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             o.items.forEach(item => {
                 const menuItem = menu.find(m => m.id === item.id);
                 const cat = item.category || (menuItem ? menuItem.category : 'other');
-                const targetStats = (cat === 'drinks') ? drinksStats : foodStats;
+                const targetStats = (['drinks', 'coffee', 'tea'].includes(cat)) ? drinksStats : foodStats;
 
                 if (!targetStats[item.id]) {
                     targetStats[item.id] = {
@@ -1385,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.renderSettlement = function () {
         const targetDate = setDateInput.value;
-        const orders = getOrders().filter(o => o.date.startsWith(targetDate));
+        const orders = getOrders().filter(o => getLocalDateStr(o.date) === targetDate);
 
         let totalRevenue = 0;
         let totalDiscount = 0;
@@ -1500,7 +1635,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmSetBtn.addEventListener('click', () => {
             const targetDate = setDateInput.value;
             const allOrders = getOrders();
-            const unsettledOrders = allOrders.filter(o => o.date.startsWith(targetDate) && !o.isSettled);
+            const unsettledOrders = allOrders.filter(o => getLocalDateStr(o.date) === targetDate && !o.isSettled);
 
             if (unsettledOrders.length === 0) {
                 alert('目前沒有可結算的訂單資料！');
@@ -1567,7 +1702,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Mark orders as settled
             allOrders.forEach(o => {
-                if (o.date.startsWith(targetDate) && !o.isSettled) {
+                if (getLocalDateStr(o.date) === targetDate && !o.isSettled) {
                     o.isSettled = true;
                 }
             });
@@ -1741,7 +1876,8 @@ document.addEventListener('DOMContentLoaded', () => {
         investment = getInvestment();
 
         // 0. Check for monthly reset (transitions to a new month) for the first column "一個月"
-        const currentMonthStr = new Date().toISOString().substring(0, 7);
+        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+        const currentMonthStr = (new Date(Date.now() - tzoffset)).toISOString().substring(0, 7);
         const lastResetMonth = localStorage.getItem('petCafeLastResetMonth');
         if (lastResetMonth && lastResetMonth !== currentMonthStr) {
             projections[0].dailyCustomers = 0;
@@ -1758,8 +1894,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 1. Calculate actual statistics for the current month (Link 1: Revenue linkage)
-        const currentMonthOrders = getOrders().filter(o => o.date.startsWith(currentMonthStr));
-        const uniqueDates = new Set(currentMonthOrders.map(o => o.date.split('T')[0]));
+        const currentMonthOrders = getOrders().filter(o => getLocalDateStr(o.date).startsWith(currentMonthStr));
+        const uniqueDates = new Set(currentMonthOrders.map(o => getLocalDateStr(o.date)));
         const actualWorkDays = uniqueDates.size;
 
         const actualTotalRevenue = currentMonthOrders.reduce((sum, o) => sum + o.total, 0);
@@ -2227,8 +2363,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const foodTable = document.getElementById('cost-matrix-table-food');
 
         const menuItems = getMenu();
-        const drinkItems = menuItems.filter(item => item.category === 'drinks');
-        const foodItems = menuItems.filter(item => item.category !== 'drinks');
+        const drinkItems = menuItems.filter(item => ['drinks', 'coffee', 'tea'].includes(item.category));
+        const foodItems = menuItems.filter(item => !['drinks', 'coffee', 'tea'].includes(item.category));
 
         renderSingleMatrixTable(drinksTable, drinkItems);
         renderSingleMatrixTable(foodTable, foodItems);

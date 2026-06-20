@@ -1,7 +1,8 @@
 // ===== CATEGORY DEFINITIONS =====
 const CATEGORIES = [
-    { id: 'drinks',    label: '飲品',       icon: '☕', hasSetMeal: false },
-    { id: 'food',      label: '主餐',       icon: '🍽️', hasSetMeal: false },
+    { id: 'coffee',    label: '咖啡',       icon: '☕', hasSetMeal: false },
+    { id: 'tea',       label: '茶類',       icon: '🍵', hasSetMeal: false },
+    { id: 'food',      label: '今日特餐',   icon: '🍽️', hasSetMeal: false },
     { id: 'toast',     label: '吐司',       icon: '🍞', hasSetMeal: true  },
     { id: 'bagel',     label: '貝果',       icon: '🥯', hasSetMeal: true  },
     { id: 'croissant', label: '可頌',       icon: '🥐', hasSetMeal: true  },
@@ -13,11 +14,12 @@ const CATEGORIES = [
 
 // ===== MENU DATA =====
 const DEFAULT_MENU = [
-    // Drinks
-    { id: "1",  name: "焦糖瑪奇朵",        category: "drinks",    description: "香濃義式濃縮搭配滑順鮮奶與焦糖醬。",   price: 150, image: "https://images.unsplash.com/photo-1485808191679-5f86510681a2?auto=format&fit=crop&w=500&q=60" },
-    { id: "2",  name: "莓果氣泡飲",        category: "drinks",    description: "新鮮綜合莓果搭配清涼氣泡水。",         price: 130, image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=500&q=60" },
-    { id: "18", name: "拿鐵咖啡",          category: "drinks",    description: "義式濃縮搭配綿密奶泡。",              price: 140, image: "" },
-    { id: "19", name: "抹茶拿鐵",          category: "drinks",    description: "日本抹茶粉搭配鮮奶。",               price: 155, image: "" },
+    // Coffee
+    { id: "1",  name: "焦糖瑪奇朵",        category: "coffee",    description: "香濃義式濃縮搭配滑順鮮奶與焦糖醬。",   price: 150, image: "https://images.unsplash.com/photo-1485808191679-5f86510681a2?auto=format&fit=crop&w=500&q=60" },
+    { id: "18", name: "拿鐵咖啡",          category: "coffee",    description: "義式濃縮搭配綿密奶泡。",              price: 140, image: "" },
+    // Tea
+    { id: "2",  name: "莓果氣泡飲",        category: "tea",       description: "新鮮綜合莓果搭配清涼氣泡水。",         price: 130, image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=500&q=60" },
+    { id: "19", name: "抹茶拿鐵",          category: "tea",       description: "日本抹茶粉搭配鮮奶。",               price: 155, image: "" },
     // Food
     { id: "3",  name: "經典早午餐盤",      category: "food",      description: "炒蛋、香煎培根、烤番茄與手工麵包。", price: 280, image: "https://images.unsplash.com/photo-1640826414986-7a1f5b08c90b?auto=format&fit=crop&w=500&q=60" },
     // Toast
@@ -145,7 +147,30 @@ function saveCostMatrix(matrix) {
 // ===== MENU =====
 function getMenu() {
     const saved = localStorage.getItem('petCafeMenu');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+        try {
+            let list = JSON.parse(saved);
+            let migrated = false;
+            list = list.map(item => {
+                if (item.category === 'drinks') {
+                    if (item.name.includes('茶') || item.name.includes('氣泡') || item.name.includes('紅') || item.name.includes('綠') || item.name.includes('蜜')) {
+                        item.category = 'tea';
+                    } else {
+                        item.category = 'coffee';
+                    }
+                    migrated = true;
+                }
+                return item;
+            });
+            if (migrated) {
+                // Save migrated version
+                localStorage.setItem('petCafeMenu', JSON.stringify(list));
+            }
+            return list;
+        } catch (e) {
+            console.error('Failed to parse petCafeMenu', e);
+        }
+    }
     localStorage.setItem('petCafeMenu', JSON.stringify(DEFAULT_MENU));
     return DEFAULT_MENU;
 }

@@ -57,8 +57,9 @@
                             <div class="form-group">
                                 <label>分類</label>
                                 <select id="item-category" class="form-control">
-                                    <option value="drinks">☕ 飲品</option>
-                                    <option value="food">🍽️ 主餐</option>
+                                    <option value="coffee">☕ 咖啡</option>
+                                    <option value="tea">🍵 茶類</option>
+                                    <option value="food">🍽️ 今日特餐</option>
                                     <option value="toast">🍞 吐司</option>
                                     <option value="bagel">🥯 貝果</option>
                                     <option value="croissant">🥐 可頌</option>
@@ -92,6 +93,12 @@
                                 </label>
                                 <div id="item-notes-container" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;">
                                     <!-- Dynamic note group rows will be rendered here -->
+                                </div>
+                                <div class="form-group full-width" style="display:flex; align-items:center; margin-top:0.75rem;">
+                                    <label style="display:inline-flex; align-items:center; cursor:pointer; font-weight:600; gap:0.5rem; margin:0;">
+                                        <input type="checkbox" id="sync-notes-to-category" style="width:1.2rem; height:1.2rem; cursor:pointer;">
+                                        <span style="color:#0288d1;">🔄 同步此備註群組設定到「同一分類」的所有品項</span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -463,7 +470,7 @@
                 <div style="margin-top:2rem; display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
                     <!-- Drinks Ranking -->
                     <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; border-top:5px solid #36A2EB;">
-                        <h3 style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">☕ 飲品熱銷排行</h3>
+                        <h3 style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">☕ 飲品(咖啡/茶類)熱銷排行</h3>
                         <div style="overflow-x:auto;">
                             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                                 <thead>
@@ -704,7 +711,7 @@
                     <div style="display:flex; flex-direction:column; gap:2rem; overflow-x:auto;">
                         <!-- Drinks Table -->
                         <div style="background:#fff; padding:1.25rem; border-radius:12px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow-x:auto;">
-                            <h3 style="margin-bottom:0.5rem; font-size:1.05rem; color:#1976d2; display:flex; align-items:center; gap:0.5rem;">☕ 飲品類成本與毛利分配矩陣</h3>
+                            <h3 style="margin-bottom:0.5rem; font-size:1.05rem; color:#1976d2; display:flex; align-items:center; gap:0.5rem;">☕ 咖啡與茶類成本與毛利分配矩陣</h3>
                             <p style="color:#666; font-size:0.8rem; margin-bottom:1rem;">提示：請在交叉欄位輸入調製該飲品所需的原料重量/數量（單位與原物料清單同步）。</p>
                             <div style="overflow-x:auto; max-width:100%;">
                                 <table id="cost-matrix-table-drinks" style="width:100%; border-collapse:collapse; font-size:0.85rem; text-align:center;">
@@ -715,7 +722,7 @@
 
                         <!-- Food Table -->
                         <div style="background:#fff; padding:1.25rem; border-radius:12px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.02); overflow-x:auto;">
-                            <h3 style="margin-bottom:0.5rem; font-size:1.05rem; color:#e65100; display:flex; align-items:center; gap:0.5rem;">🍔 餐點/主食類成本與毛利分配矩陣</h3>
+                            <h3 style="margin-bottom:0.5rem; font-size:1.05rem; color:#e65100; display:flex; align-items:center; gap:0.5rem;">🍽️ 今日特餐與其他餐點成本與毛利分配矩陣</h3>
                             <p style="color:#666; font-size:0.8rem; margin-bottom:1rem;">提示：請在交叉欄位輸入該餐點所需的食材數量/用量（單位與原物料清單同步）。</p>
                             <div style="overflow-x:auto; max-width:100%;">
                                 <table id="cost-matrix-table-food" style="width:100%; border-collapse:collapse; font-size:0.85rem; text-align:center;">

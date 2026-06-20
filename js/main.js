@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== STATE =====
     let menu = getMenu();
     let cart = getCart();
-    let currentCategory = 'drinks';
+    let currentCategory = 'coffee';
     let pendingSetMealItem = null;
     let selectedAddons = [];   // array of selected addons (drinks + set meal options)
     let selectedNotes = [];    // array of custom selected notes
@@ -19,8 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartItemsCont = document.getElementById('cart-items-container');
     const cartTotal = document.getElementById('cart-total');
     const checkoutBtn = document.getElementById('checkout-btn');
-    const tableInput = document.getElementById('table-number-input');
-    const tableHint = document.getElementById('table-hint');
+    // Welcome Table & Guests Modal elements
+    const tableEntryModal = document.getElementById('table-entry-modal');
+    const tableEntryForm = document.getElementById('table-entry-form');
+    const entryTableNumInput = document.getElementById('entry-table-number');
+    const entryGuestsInput = document.getElementById('entry-guests');
+    const displayTableNum = document.getElementById('display-table-number');
+    const displayGuests = document.getElementById('display-guests');
+    const changeTableBtn = document.getElementById('change-table-btn');
+
+    let customerTableNumber = '';
+    let customerGuestsCount = 1;
 
     // Invoice
     const invPaper = document.getElementById('inv-paper');
@@ -53,6 +62,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeSuccessBtn = document.getElementById('close-success-btn');
 
     // ===== INIT =====
+    // Welcome Modal logic
+    tableEntryForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        customerTableNumber = entryTableNumInput.value.trim();
+        customerGuestsCount = parseInt(entryGuestsInput.value, 10) || 1;
+        
+        displayTableNum.textContent = customerTableNumber;
+        displayGuests.textContent = customerGuestsCount;
+        
+        tableEntryModal.style.display = 'none';
+    });
+
+    changeTableBtn.addEventListener('click', () => {
+        entryTableNumInput.value = customerTableNumber;
+        entryGuestsInput.value = customerGuestsCount;
+        tableEntryModal.style.display = 'flex';
+    });
+
     renderCategoryTabs();
     renderMenu();
     updateCartUI();
@@ -129,21 +156,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'menu-item';
             const hasSetMeal = catInfo.hasSetMeal;
-            card.innerHTML = `
-                <div class="menu-item-name">${item.name}</div>
-                <div class="menu-item-desc">${item.description || ''}</div>
-                <div class="menu-item-bottom">
-                    <span class="price">NT$ ${item.price}</span>
-                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
-                        ${hasSetMeal ? '<span class="set-meal-badge">可加套餐</span>' : ''}
-                        <button class="add-btn" data-id="${item.id}">加入購物車</button>
+            
+            if (item.isPreparing) {
+                card.style.opacity = '0.7';
+                card.innerHTML = `
+                    <div class="menu-item-name">${item.name} <span class="preparing-badge" style="background:#e65100;color:white;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:5px;vertical-align:middle;font-weight:bold;">準備中</span></div>
+                    <div class="menu-item-desc">${item.description || ''}</div>
+                    <div class="menu-item-bottom">
+                        <span class="price">NT$ ${item.price}</span>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                            ${hasSetMeal ? '<span class="set-meal-badge" style="opacity:0.5;">可加套餐</span>' : ''}
+                            <button class="add-btn disabled" style="background:#ccc;cursor:not-allowed;" disabled>準備中</button>
+                        </div>
                     </div>
-                </div>
-            `;
-            card.querySelector('.add-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                handleAddItem(item);
-            });
+                `;
+            } else {
+                card.innerHTML = `
+                    <div class="menu-item-name">${item.name}</div>
+                    <div class="menu-item-desc">${item.description || ''}</div>
+                    <div class="menu-item-bottom">
+                        <span class="price">NT$ ${item.price}</span>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                            ${hasSetMeal ? '<span class="set-meal-badge">可加套餐</span>' : ''}
+                            <button class="add-btn" data-id="${item.id}">加入購物車</button>
+                        </div>
+                    </div>
+                `;
+                card.querySelector('.add-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleAddItem(item);
+                });
+            }
             menuContainer.appendChild(card);
         });
     }
@@ -152,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleAddItem(item) {
         const catInfo = getCategoryInfo(item.category);
         const hasNotes = (item.notes && item.notes.length > 0) || (item.note && item.note.trim().length > 0);
-        if (catInfo.hasSetMeal || item.category === 'drinks' || hasNotes) {
+        if (catInfo.hasSetMeal || ['drinks', 'coffee', 'tea'].includes(item.category) || hasNotes) {
             openSetMealModal(item);
         } else {
             addToCart(item, [], false);
@@ -305,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ecoCupCheckbox = document.getElementById('eco-cup-checkbox');
         if (ecoCupCheckbox) ecoCupCheckbox.checked = false;
 
-        if (item.category === 'drinks') {
+        if (['drinks', 'coffee', 'tea'].includes(item.category)) {
             // Drinks: single-select size + eco cup
             document.getElementById('sm-title').textContent = '選擇容量（必選）';
             if (ecoCupContainer) ecoCupContainer.style.display = 'block';
@@ -337,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Section 1: Drinks from menu (with optional discount, single-select)
             const freshMenu = getMenu();
-            const drinkItems = freshMenu.filter(m => m.category === 'drinks');
+            const drinkItems = freshMenu.filter(m => ['drinks', 'coffee', 'tea'].includes(m.category) && !m.isPreparing);
             const discounts = getDrinkDiscounts();
             const drinkDiscount = discounts[item.category] || 0;
 
@@ -361,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const discountedPrice = Math.max(0, drink.price - drinkDiscount);
                     const optObj = { id: 'drink_' + drink.id, name: drink.name, price: discountedPrice };
                     const el = document.createElement('div');
-                    el.className = 'setmeal-option';
+                    el.className = 'setmeal-option drink-addon-opt';
                     el.innerHTML = `
                         <div class="opt-left">
                             <div class="opt-check"></div>
@@ -615,13 +658,10 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('購物車是空的喔！先挑選一些美味的餐點吧 🐾');
             return;
         }
-        const tableNum = tableInput.value.trim();
-        if (!tableNum) {
-            tableHint.style.display = 'inline';
-            tableInput.focus();
+        if (!customerTableNumber) {
+            tableEntryModal.style.display = 'flex';
             return;
         }
-        tableHint.style.display = 'none';
 
         // Invoice info
         let invoiceType = 'paper';
@@ -639,14 +679,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const order = {
             id: 'ORD' + Date.now(),
             date: new Date().toISOString(),
-            tableNumber: tableNum,
+            tableNumber: customerTableNumber,
             type: '內用',
             source: 'frontend',
             items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.quantity, addons: i.addons || [], isEcoCup: i.isEcoCup, category: i.category, note: i.note || '' })),
             subtotal,
             discount: 0,
             total: subtotal,
-            guests: 1,
+            guests: customerGuestsCount,
             invoiceType,
             invoiceData
         };
@@ -658,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show success
         successOrderId.textContent = '線上點單已送出，請至櫃檯結帳';
-        successTable.textContent = `🪑 桌號 ${tableNum}`;
+        successTable.textContent = `🪑 桌號 ${customerTableNumber} (人數 ${customerGuestsCount}人)`;
         successModal.style.display = 'flex';
 
         // Clear cart
