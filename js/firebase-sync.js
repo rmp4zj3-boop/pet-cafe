@@ -15,10 +15,21 @@
     // ===== 設定讀取 =====
     const CONFIG_KEY = 'petCafeFirebaseConfig';
 
+    const DEFAULT_CONFIG = {
+        apiKey: "AIzaSyC2964yt0OaOhTxKFVP3nApvtSXCnKtHLM",
+        authDomain: "coffee-cb2dc.firebaseapp.com",
+        databaseURL: "https://coffee-cb2dc-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "coffee-cb2dc",
+        storageBucket: "coffee-cb2dc.firebasestorage.app",
+        messagingSenderId: "292003445650",
+        appId: "1:292003445650:web:e6983395c4aa1b0e481f4b",
+        measurementId: "G-KR5BR09MQ5"
+    };
+
     function getFirebaseConfig() {
         const saved = localStorage.getItem(CONFIG_KEY);
-        if (!saved) return null;
-        try { return JSON.parse(saved); } catch (e) { return null; }
+        if (!saved) return DEFAULT_CONFIG;
+        try { return JSON.parse(saved); } catch (e) { return DEFAULT_CONFIG; }
     }
 
     function saveFirebaseConfig(cfg) {
