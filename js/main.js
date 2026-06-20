@@ -209,17 +209,28 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('sm-title').textContent = '加點項目（可複選）';
             if (ecoCupContainer) ecoCupContainer.style.display = 'none';
 
-            // Section 1: Drinks from menu
+            // Section 1: Drinks from menu (with optional discount)
             const freshMenu = getMenu();
             const drinkItems = freshMenu.filter(m => m.category === 'drinks');
+            const discounts = getDrinkDiscounts();
+            const drinkDiscount = discounts[item.category] || 0;
+
             if (drinkItems.length > 0) {
                 const h1 = document.createElement('div');
                 h1.className = 'sm-section-header';
-                h1.textContent = '☕ 加點飲品';
+                h1.textContent = drinkDiscount > 0
+                    ? `☕ 加點飲品（套餐折抵 NT$ ${drinkDiscount}）`
+                    : '☕ 加點飲品';
                 setmealOptsList.appendChild(h1);
 
                 drinkItems.forEach(drink => {
-                    const el = makeAddonEl({ id: 'drink_' + drink.id, name: drink.name, price: drink.price });
+                    const discountedPrice = Math.max(0, drink.price - drinkDiscount);
+                    const optObj = { id: 'drink_' + drink.id, name: drink.name, price: discountedPrice };
+                    const el = makeAddonEl(optObj);
+                    if (drinkDiscount > 0) {
+                        const priceEl = el.querySelector('.opt-price');
+                        if (priceEl) priceEl.innerHTML = `<span style="text-decoration:line-through;color:#aaa;font-size:0.8rem;">NT$ ${drink.price}</span> <span style="color:#2e7d32;">NT$ ${discountedPrice}</span>`;
+                    }
                     setmealOptsList.appendChild(el);
                 });
             }

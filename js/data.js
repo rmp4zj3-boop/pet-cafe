@@ -90,6 +90,53 @@ function saveDrinkDiscounts(discounts) {
     localStorage.setItem('petCafeDrinkDiscounts', JSON.stringify(discounts));
 }
 
+// ===== INGREDIENTS & COST MATRIX =====
+const DEFAULT_INGREDIENTS = [
+    { id: 'ing1', name: '咖啡豆', weight: 1, unit: 'kg', purchasePrice: 600 },
+    { id: 'ing2', name: '全脂鮮奶', weight: 1, unit: 'L', purchasePrice: 90 },
+    { id: 'ing3', name: '焦糖醬', weight: 100, unit: 'ml', purchasePrice: 50 },
+    { id: 'ing4', name: '雞蛋', weight: 10, unit: '顆', purchasePrice: 80 },
+    { id: 'ing5', name: '培根', weight: 20, unit: '片', purchasePrice: 300 },
+    { id: 'ing6', name: '厚片吐司', weight: 10, unit: '片', purchasePrice: 100 }
+];
+
+const DEFAULT_COST_MATRIX = {
+    '1': { 'ing1': 0.02, 'ing2': 0.2, 'ing3': 15 },
+    '6': { 'ing6': 1, 'ing4': 1 }
+};
+
+function getIngredients() {
+    const saved = localStorage.getItem('petCafeIngredients');
+    if (!saved) return DEFAULT_INGREDIENTS;
+    try {
+        const parsed = JSON.parse(saved);
+        return parsed.map(ing => {
+            if (ing.purchasePrice === undefined && ing.unitCost !== undefined) {
+                ing.weight = 1;
+                ing.purchasePrice = ing.unitCost;
+            }
+            if (ing.weight === undefined) ing.weight = 1;
+            if (ing.purchasePrice === undefined) ing.purchasePrice = 0;
+            return ing;
+        });
+    } catch (e) {
+        return DEFAULT_INGREDIENTS;
+    }
+}
+
+function saveIngredients(list) {
+    localStorage.setItem('petCafeIngredients', JSON.stringify(list));
+}
+
+function getCostMatrix() {
+    const saved = localStorage.getItem('petCafeCostMatrix');
+    return saved ? JSON.parse(saved) : DEFAULT_COST_MATRIX;
+}
+
+function saveCostMatrix(matrix) {
+    localStorage.setItem('petCafeCostMatrix', JSON.stringify(matrix));
+}
+
 // ===== MENU =====
 function getMenu() {
     const saved = localStorage.getItem('petCafeMenu');

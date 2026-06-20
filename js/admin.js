@@ -244,6 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderRevenue();
             } else if (target === 'projection-tab') {
                 renderProjections();
+            } else if (target === 'cost-tab') {
+                renderCostEstimation();
             } else if (target === 'settings-tab') {
                 document.getElementById('setting-shop-name').value = getSettings().shopName;
             }
@@ -329,7 +331,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span style="color:#666; font-size:0.85rem;">${timeStr}</span>
                 </div>
                 <div style="font-size:0.9rem; color:#444; margin-bottom:0.5rem;">
-                    ${order.items.map(i => `${i.qty}x ${i.name}`).join(', ')}
+                    ${order.items.map(i => {
+                        const addonNames = (i.addons || []).map(a => a.name).join('+');
+                        return `${i.qty}x ${i.name}${addonNames ? ` (${addonNames})` : ''}`;
+                    }).join(', ')}
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-weight:bold; color:#e65100;">NT$ ${order.total}</span>
@@ -344,13 +349,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.loadOrderToPOS = function (order) {
         loadedPosQueueOrder = order;
         posCart = order.items.map(i => {
+            const addons = i.addons || [];
+            const addonKey = addons.map(a => a.id).sort().join('+');
+            const key = i.id + '_' + (addonKey || 'none') + (i.isEcoCup ? '_eco' : '');
+            const addonsTotal = addons.reduce((s, a) => s + (a.price || 0), 0);
+            const menuItem = menu.find(m => m.id === i.id);
+            const category = menuItem ? menuItem.category : '';
             return {
-                key: i.id + (i.setMeal ? '_' + i.setMeal.id : '_none'),
+                key,
                 id: i.id,
                 name: i.name,
-                price: i.price - (i.setMeal ? i.setMeal.price : 0),
-                setMeal: i.setMeal,
-                qty: i.qty
+                price: i.price - addonsTotal + (i.isEcoCup ? 5 : 0),
+                addons,
+                qty: i.qty,
+                isEcoCup: i.isEcoCup || false,
+                category
             };
         });
         document.getElementById('pos-table').value = order.tableNumber;
@@ -418,7 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (idx === -1) {
                     posSelectedAddons.push({ ...opt, _isDrinkSize: true });
                     el.classList.add('selected');
-                    list.querySelectorAll('.pos-drink-size-opt').forEach(e => { if (e !== el) e.classList.remove('selected'); });
+                    const optsList = document.getElementById('pos-sm-options-list');
+                    if (optsList) {
+                        optsList.querySelectorAll('.pos-drink-size-opt').forEach(e => { if (e !== el) e.classList.remove('selected'); });
+                    }
                 }
             } else {
                 if (idx === -1) { posSelectedAddons.push(opt); el.classList.add('selected'); }
@@ -670,13 +686,64 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'order-card';
 
-                let itemsHtml = '<ul class="order-items-list">';
+                const drinksArray = [];
+                const foodArray = [];
+
                 order.items.forEach(item => {
-                    itemsHtml += `<li><strong>${item.qty}x</strong> ${item.name}`;
-                    if (item.setMeal) itemsHtml += ` <span style="color:var(--text-muted);font-size:0.8rem;">(+ ${item.setMeal.name})</span>`;
-                    itemsHtml += `</li>`;
+                    const menuItem = menu.find(m => m.id === item.id);
+                    const cat = item.category || (menuItem ? menuItem.category : '');
+
+                    if (cat === 'drinks') {
+                        const sizeAddon = (item.addons || []).find(a => a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL');
+                        const sizeStr = sizeAddon ? ` (${sizeAddon.name})` : '';
+                        const otherAddons = (item.addons || []).filter(a => !(a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL'));
+                        const ecoStr = item.isEcoCup ? ' [🌱 環保杯]' : '';
+                        
+                        let detailStr = sizeStr + ecoStr;
+                        if (otherAddons.length > 0) {
+                            detailStr += ` (加點: ${otherAddons.map(a => a.name).join(', ')})`;
+                        }
+                        
+                        drinksArray.push({
+                            name: `${item.name}${detailStr}`,
+                            qty: item.qty
+                        });
+                    } else {
+                        const drinkAddons = (item.addons || []).filter(a => a.id && a.id.startsWith('drink_'));
+                        const foodAddons = (item.addons || []).filter(a => !a.id || !a.id.startsWith('drink_'));
+                        
+                        const foodAddonStr = foodAddons.length > 0 ? ` (加點: ${foodAddons.map(a => a.name).join(', ')})` : '';
+                        foodArray.push({
+                            name: `${item.name}${foodAddonStr}`,
+                            qty: item.qty
+                        });
+                        
+                        drinkAddons.forEach(da => {
+                            drinksArray.push({
+                                name: `${da.name} [套餐加購 - 搭配 ${item.name}]`,
+                                qty: item.qty
+                            });
+                        });
+                    }
                 });
-                itemsHtml += '</ul>';
+
+                let itemsHtml = '';
+                if (drinksArray.length > 0) {
+                    itemsHtml += `<div style="font-weight:bold; color:#1976d2; margin: 0.5rem 0 0.25rem 0; font-size:0.85rem; border-bottom:1px dashed #1976d2; padding-bottom: 2px;">☕ 飲品/飲料區</div>`;
+                    itemsHtml += '<ul class="order-items-list" style="margin-bottom: 0.5rem; padding-left: 1.2rem;">';
+                    drinksArray.forEach(d => {
+                        itemsHtml += `<li><strong>${d.qty}x</strong> ${d.name}</li>`;
+                    });
+                    itemsHtml += '</ul>';
+                }
+                if (foodArray.length > 0) {
+                    itemsHtml += `<div style="font-weight:bold; color:#d84315; margin: 0.5rem 0 0.25rem 0; font-size:0.85rem; border-bottom:1px dashed #d84315; padding-bottom: 2px;">🍔 餐點/主食區</div>`;
+                    itemsHtml += '<ul class="order-items-list" style="margin-bottom: 0.5rem; padding-left: 1.2rem;">';
+                    foodArray.forEach(f => {
+                        itemsHtml += `<li><strong>${f.qty}x</strong> ${f.name}</li>`;
+                    });
+                    itemsHtml += '</ul>';
+                }
 
                 const badgeClass = order.type === '內用' ? 'dine-in' : 'takeout';
 
@@ -686,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="order-time">${formatTime(order.date)}</span>
                     </div>
                     ${itemsHtml}
-                    <div class="order-card-footer">
+                    <div class="order-card-footer" style="margin-top:0.75rem; padding-top:0.5rem; border-top: 1px solid #eee;">
                         <span class="order-type-badge ${badgeClass}">${order.type}</span>
                         <button class="serve-btn" onclick="serveOrder(${idx})">✅ 出餐</button>
                     </div>
@@ -697,7 +764,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Render Served
         servedList.innerHTML = '';
-        // Sort served by newest first
         const sortedServed = [...served].reverse();
         if (sortedServed.length === 0) {
             servedList.innerHTML = '<div class="kitchen-empty">尚無出餐紀錄</div>';
@@ -705,13 +771,72 @@ document.addEventListener('DOMContentLoaded', () => {
             sortedServed.forEach(order => {
                 const card = document.createElement('div');
                 card.className = 'order-card';
-                let itemsStr = order.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+                
+                const drinksArray = [];
+                const foodArray = [];
+
+                order.items.forEach(item => {
+                    const menuItem = menu.find(m => m.id === item.id);
+                    const cat = item.category || (menuItem ? menuItem.category : '');
+
+                    if (cat === 'drinks') {
+                        const sizeAddon = (item.addons || []).find(a => a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL');
+                        const sizeStr = sizeAddon ? ` (${sizeAddon.name})` : '';
+                        const otherAddons = (item.addons || []).filter(a => !(a._isDrinkSize || a.id === 'M' || a.id === 'L' || a.id === 'XL'));
+                        const ecoStr = item.isEcoCup ? ' [🌱 環保杯]' : '';
+                        
+                        let detailStr = sizeStr + ecoStr;
+                        if (otherAddons.length > 0) {
+                            detailStr += ` (加點: ${otherAddons.map(a => a.name).join(', ')})`;
+                        }
+                        
+                        drinksArray.push({
+                            name: `${item.name}${detailStr}`,
+                            qty: item.qty
+                        });
+                    } else {
+                        const drinkAddons = (item.addons || []).filter(a => a.id && a.id.startsWith('drink_'));
+                        const foodAddons = (item.addons || []).filter(a => !a.id || !a.id.startsWith('drink_'));
+                        
+                        const foodAddonStr = foodAddons.length > 0 ? ` (加點: ${foodAddons.map(a => a.name).join(', ')})` : '';
+                        foodArray.push({
+                            name: `${item.name}${foodAddonStr}`,
+                            qty: item.qty
+                        });
+                        
+                        drinkAddons.forEach(da => {
+                            drinksArray.push({
+                                name: `${da.name} [套餐加購 - 搭配 ${item.name}]`,
+                                qty: item.qty
+                            });
+                        });
+                    }
+                });
+
+                let itemsHtml = '';
+                if (drinksArray.length > 0) {
+                    itemsHtml += `<div style="font-weight:bold; color:#1976d2; margin: 0.25rem 0; font-size:0.8rem;">☕ 飲品/飲料</div>`;
+                    itemsHtml += '<ul class="order-items-list" style="margin-bottom: 0.25rem; padding-left: 1.2rem; font-size:0.85rem;">';
+                    drinksArray.forEach(d => {
+                        itemsHtml += `<li><strong>${d.qty}x</strong> ${d.name}</li>`;
+                    });
+                    itemsHtml += '</ul>';
+                }
+                if (foodArray.length > 0) {
+                    itemsHtml += `<div style="font-weight:bold; color:#d84315; margin: 0.25rem 0; font-size:0.8rem;">🍔 餐點</div>`;
+                    itemsHtml += '<ul class="order-items-list" style="margin-bottom: 0.25rem; padding-left: 1.2rem; font-size:0.85rem;">';
+                    foodArray.forEach(f => {
+                        itemsHtml += `<li><strong>${f.qty}x</strong> ${f.name}</li>`;
+                    });
+                    itemsHtml += '</ul>';
+                }
+
                 card.innerHTML = `
                     <div class="order-card-header">
                         <span class="order-table-num">🪑 ${order.tableNumber}</span>
                         <span class="order-time">${formatTime(order.date)}</span>
                     </div>
-                    <div style="font-size:0.85rem;color:#666;margin-bottom:0.25rem;">${itemsStr}</div>
+                    ${itemsHtml}
                 `;
                 servedList.appendChild(card);
             });
@@ -1266,6 +1391,292 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.shop-name-display').forEach(e => e.textContent = name);
         alert('設定已儲存！');
     });
+
+    // ===== INGREDIENTS & COST MATRIX =====
+    let ingredients = getIngredients();
+    let costMatrix = getCostMatrix();
+
+    function renderIngredientsEditor() {
+        const listEl = document.getElementById('ingredients-editor-list');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        ingredients.forEach((ing, index) => {
+            const div = document.createElement('div');
+            div.style.display = 'grid';
+            div.style.gridTemplateColumns = '2fr 1fr 0.8fr 1.2fr auto';
+            div.style.gap = '5px';
+            div.style.alignItems = 'center';
+            div.style.background = '#fcfcfc';
+            div.style.padding = '5px';
+            div.style.border = '1px solid #eee';
+            div.style.borderRadius = '6px';
+            div.innerHTML = `
+                <input type="text" class="form-control ing-name-input" data-idx="${index}" value="${ing.name || ''}" placeholder="原料" style="padding:4px; font-size:0.8rem;">
+                <input type="number" class="form-control ing-weight-input" data-idx="${index}" value="${ing.weight !== undefined ? ing.weight : 1}" placeholder="重量" style="padding:4px; font-size:0.8rem; text-align:center;" min="0.001" step="any">
+                <input type="text" class="form-control ing-unit-input" data-idx="${index}" value="${ing.unit || ''}" placeholder="單位" style="padding:4px; font-size:0.8rem; text-align:center;">
+                <input type="number" class="form-control ing-price-input" data-idx="${index}" value="${ing.purchasePrice !== undefined ? ing.purchasePrice : 0}" placeholder="進貨金額" style="padding:4px; font-size:0.8rem; text-align:right;" min="0" step="any">
+                <button class="btn btn-danger" onclick="deleteIngredient(${index})" style="padding:4px 8px; font-size:0.8rem;">X</button>
+            `;
+            listEl.appendChild(div);
+        });
+    }
+
+    window.deleteIngredient = function(index) {
+        const ing = ingredients[index];
+        if (confirm(`確定要刪除「${ing.name}」嗎？這將會清除所有餐點中使用此原料的用量設定。`)) {
+            const ingId = ing.id;
+            ingredients.splice(index, 1);
+            Object.keys(costMatrix).forEach(itemId => {
+                if (costMatrix[itemId] && costMatrix[itemId][ingId] !== undefined) {
+                    delete costMatrix[itemId][ingId];
+                }
+            });
+            renderIngredientsEditor();
+            renderCostMatrixTable();
+        }
+    };
+
+    const addIngBtn = document.getElementById('add-ingredient-btn');
+    if (addIngBtn) {
+        addIngBtn.addEventListener('click', () => {
+            ingredients.push({
+                id: 'ing_' + Date.now(),
+                name: '新原料',
+                weight: 1,
+                unit: '份',
+                purchasePrice: 0
+            });
+            renderIngredientsEditor();
+            renderCostMatrixTable();
+        });
+    }
+
+    function renderSingleMatrixTable(table, items) {
+        if (!table) return;
+        table.innerHTML = '';
+
+        if (items.length === 0) {
+            table.innerHTML = '<tr><td style="padding:10px; color:#888;">此類別尚無任何品項</td></tr>';
+            return;
+        }
+
+        const thead = document.createElement('thead');
+        const headerTr = document.createElement('tr');
+        headerTr.style.background = '#f1f3f5';
+        headerTr.style.borderBottom = '2px solid #dee2e6';
+        
+        let headerHtml = `
+            <th style="padding:8px; border:1px solid #dee2e6; text-align:left; min-width:110px;">原料名稱</th>
+            <th style="padding:8px; border:1px solid #dee2e6; min-width:80px;">進貨規格</th>
+            <th style="padding:8px; border:1px solid #dee2e6; min-width:80px;">單位成本</th>
+        `;
+        items.forEach(item => {
+            headerHtml += `
+                <th style="padding:8px; border:1px solid #dee2e6; min-width:100px; max-width:140px; font-weight:600;">
+                    ${item.name}
+                </th>
+            `;
+        });
+        headerTr.innerHTML = headerHtml;
+        thead.appendChild(headerTr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        ingredients.forEach(ing => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #eee';
+            
+            const unitCost = ing.weight ? (ing.purchasePrice / ing.weight) : 0;
+            
+            let rowHtml = `
+                <td style="padding:6px; border:1px solid #dee2e6; text-align:left; font-weight:500;">${ing.name}</td>
+                <td style="padding:6px; border:1px solid #dee2e6; color:#666;">${ing.weight} ${ing.unit}</td>
+                <td style="padding:6px; border:1px solid #dee2e6; text-align:right; color:#666;">NT$ ${unitCost.toFixed(2)} / ${ing.unit}</td>
+            `;
+
+            items.forEach(item => {
+                const qtyMap = costMatrix[item.id] || {};
+                const qty = qtyMap[ing.id] !== undefined ? qtyMap[ing.id] : 0;
+                rowHtml += `
+                    <td style="padding:6px; border:1px solid #dee2e6;">
+                        <input type="number" class="matrix-cell-input" 
+                               data-item-id="${item.id}" 
+                               data-ing-id="${ing.id}" 
+                               value="${qty}" 
+                               min="0" step="any"
+                               style="width:65px; text-align:center; padding:3px; border:1px solid #ccc; border-radius:4px; font-size:0.8rem;">
+                        <span style="font-size:0.75rem; color:#888; margin-left:2px;">${ing.unit}</span>
+                    </td>
+                `;
+            });
+            tr.innerHTML = rowHtml;
+            tbody.appendChild(tr);
+        });
+
+        const costTr = document.createElement('tr');
+        costTr.style.background = '#fef9e7';
+        costTr.style.borderTop = '2px solid #ccc';
+        let costHtml = `
+            <td colspan="3" style="padding:8px; border:1px solid #dee2e6; text-align:right; font-weight:bold; color:#b71c1c;">💰 總食材成本</td>
+        `;
+        
+        const priceTr = document.createElement('tr');
+        priceTr.style.background = '#f4f6f9';
+        let priceHtml = `
+            <td colspan="3" style="padding:8px; border:1px solid #dee2e6; text-align:right; font-weight:bold; color:#1a237e;">🏷️ 販售價格</td>
+        `;
+
+        const profitTr = document.createElement('tr');
+        profitTr.style.background = '#e8f5e9';
+        let profitHtml = `
+            <td colspan="3" style="padding:8px; border:1px solid #dee2e6; text-align:right; font-weight:bold; color:#2e7d32;">📈 毛利額</td>
+        `;
+
+        const marginTr = document.createElement('tr');
+        marginTr.style.background = '#e8f5e9';
+        marginTr.style.borderBottom = '2px solid #2e7d32';
+        let marginHtml = `
+            <td colspan="3" style="padding:8px; border:1px solid #dee2e6; text-align:right; font-weight:bold; color:#2e7d32;">📊 毛利率</td>
+        `;
+
+        items.forEach(item => {
+            let totalCost = 0;
+            ingredients.forEach(ing => {
+                const qtyMap = costMatrix[item.id] || {};
+                const qty = qtyMap[ing.id] !== undefined ? qtyMap[ing.id] : 0;
+                const unitCost = ing.weight ? (ing.purchasePrice / ing.weight) : 0;
+                totalCost += qty * unitCost;
+            });
+
+            const price = item.price || 0;
+            const profit = price - totalCost;
+            const marginPct = price ? Math.round((profit / price) * 100) : 0;
+
+            costHtml += `
+                <td style="padding:8px; border:1px solid #dee2e6; font-weight:bold; color:#b71c1c;" id="total-cost-${item.id}">
+                    NT$ ${totalCost.toFixed(1)}
+                </td>
+            `;
+            priceHtml += `
+                <td style="padding:8px; border:1px solid #dee2e6; font-weight:bold; color:#1a237e;">
+                    NT$ ${price}
+                </td>
+            `;
+            profitHtml += `
+                <td style="padding:8px; border:1px solid #dee2e6; font-weight:bold; color:#2e7d32;" id="profit-val-${item.id}">
+                    NT$ ${profit.toFixed(1)}
+                </td>
+            `;
+            marginHtml += `
+                <td style="padding:8px; border:1px solid #dee2e6; font-weight:bold; color:${marginPct >= 30 ? '#2e7d32' : '#e65100'};" id="margin-pct-${item.id}">
+                    ${marginPct}%
+                </td>
+            `;
+        });
+
+        costTr.innerHTML = costHtml;
+        priceTr.innerHTML = priceHtml;
+        profitTr.innerHTML = profitHtml;
+        marginTr.innerHTML = marginHtml;
+
+        tbody.appendChild(costTr);
+        tbody.appendChild(priceTr);
+        tbody.appendChild(profitTr);
+        tbody.appendChild(marginTr);
+        table.appendChild(tbody);
+
+        table.querySelectorAll('.matrix-cell-input').forEach(input => {
+            input.addEventListener('input', () => {
+                const itemId = input.dataset.itemId;
+                const ingId = input.dataset.ingId;
+                const val = parseFloat(input.value) || 0;
+                
+                if (!costMatrix[itemId]) costMatrix[itemId] = {};
+                costMatrix[itemId][ingId] = val;
+
+                let newTotalCost = 0;
+                ingredients.forEach(ing => {
+                    const qty = costMatrix[itemId][ing.id] || 0;
+                    const unitCost = ing.weight ? (ing.purchasePrice / ing.weight) : 0;
+                    newTotalCost += qty * unitCost;
+                });
+
+                const targetItem = items.find(m => m.id === itemId);
+                const price = targetItem ? (targetItem.price || 0) : 0;
+                const profit = price - newTotalCost;
+                const marginPct = price ? Math.round((profit / price) * 100) : 0;
+
+                const costEl = document.getElementById(`total-cost-${itemId}`);
+                if (costEl) costEl.textContent = `NT$ ${newTotalCost.toFixed(1)}`;
+                const profitEl = document.getElementById(`profit-val-${itemId}`);
+                if (profitEl) profitEl.textContent = `NT$ ${profit.toFixed(1)}`;
+                
+                const pctEl = document.getElementById(`margin-pct-${itemId}`);
+                if (pctEl) {
+                    pctEl.textContent = `${marginPct}%`;
+                    pctEl.style.color = marginPct >= 30 ? '#2e7d32' : '#e65100';
+                }
+            });
+        });
+    }
+
+    function renderCostMatrixTable() {
+        const drinksTable = document.getElementById('cost-matrix-table-drinks');
+        const foodTable = document.getElementById('cost-matrix-table-food');
+        
+        const menuItems = getMenu();
+        const drinkItems = menuItems.filter(item => item.category === 'drinks');
+        const foodItems = menuItems.filter(item => item.category !== 'drinks');
+
+        renderSingleMatrixTable(drinksTable, drinkItems);
+        renderSingleMatrixTable(foodTable, foodItems);
+    }
+
+    const saveCostMatrixBtn = document.getElementById('save-cost-matrix-btn');
+    if (saveCostMatrixBtn) {
+        saveCostMatrixBtn.addEventListener('click', () => {
+            const ingRows = document.querySelectorAll('#ingredients-editor-list > div');
+            const newIngredients = [];
+            let hasDuplicate = false;
+            const seenNames = new Set();
+
+            ingRows.forEach(row => {
+                const nameInp = row.querySelector('.ing-name-input');
+                const name = nameInp.value.trim();
+                const weight = parseFloat(row.querySelector('.ing-weight-input').value) || 1;
+                const unit = row.querySelector('.ing-unit-input').value.trim();
+                const purchasePrice = parseFloat(row.querySelector('.ing-price-input').value) || 0;
+                const id = ingredients[parseInt(nameInp.dataset.idx, 10)]?.id || 'ing_' + Date.now() + Math.random();
+                
+                if (name) {
+                    if (seenNames.has(name)) {
+                        hasDuplicate = true;
+                    }
+                    seenNames.add(name);
+                    newIngredients.push({ id, name, weight, unit, purchasePrice });
+                }
+            });
+
+            if (hasDuplicate) {
+                alert('警告：原料清單中有重複的原料名稱！');
+            }
+
+            ingredients = newIngredients;
+            saveIngredients(ingredients);
+            saveCostMatrix(costMatrix);
+
+            alert('原料成本與矩陣設定儲存成功！');
+            renderIngredientsEditor();
+            renderCostMatrixTable();
+        });
+    }
+
+    window.renderCostEstimation = function() {
+        ingredients = getIngredients();
+        costMatrix = getCostMatrix();
+        renderIngredientsEditor();
+        renderCostMatrixTable();
+    };
 
     const settings = getSettings();
     document.querySelectorAll('.shop-name-display').forEach(e => e.textContent = settings.shopName);
