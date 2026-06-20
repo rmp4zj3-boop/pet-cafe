@@ -204,18 +204,18 @@ function saveSettlements(list) {
 
 // ===== PROJECTIONS =====
 const DEFAULT_PROJECTIONS = [
-    { year: 1, dailyCustomers: 40, workDaysPerMonth: 26, avgTicketPrice: 280, ingredientCost: 1050000, personnelCost: 116667, rentCost: 50000, utilityCost: 350000, marketingCost: 250000 },
-    { year: 2, dailyCustomers: 55, workDaysPerMonth: 26, avgTicketPrice: 300, ingredientCost: 1550000, personnelCost: 133333, rentCost: 52500, utilityCost: 400000, marketingCost: 300000 },
-    { year: 3, dailyCustomers: 70, workDaysPerMonth: 26, avgTicketPrice: 320, ingredientCost: 2100000, personnelCost: 150000, rentCost: 55000, utilityCost: 450000, marketingCost: 350000 }
+    { year: 1, dailyCustomers: 40, workDaysPerMonth: 26, avgTicketPrice: 280, ingredientCost: 87500, personnelCost: 116667, rentCost: 50000, utilityCost: 29167 },
+    { year: 2, dailyCustomers: 55, workDaysPerMonth: 26, avgTicketPrice: 300, ingredientCost: 129167, personnelCost: 133333, rentCost: 52500, utilityCost: 33333 },
+    { year: 3, dailyCustomers: 70, workDaysPerMonth: 26, avgTicketPrice: 320, ingredientCost: 175000, personnelCost: 150000, rentCost: 55000, utilityCost: 37500 }
 ];
 function getProjections() {
-    const saved = localStorage.getItem('petCafeProjectionsV2');
+    const saved = localStorage.getItem('petCafeProjectionsV3');
     if (saved) return JSON.parse(saved);
-    localStorage.setItem('petCafeProjectionsV2', JSON.stringify(DEFAULT_PROJECTIONS));
+    localStorage.setItem('petCafeProjectionsV3', JSON.stringify(DEFAULT_PROJECTIONS));
     return DEFAULT_PROJECTIONS;
 }
 function saveProjections(data) {
-    localStorage.setItem('petCafeProjectionsV2', JSON.stringify(data));
+    localStorage.setItem('petCafeProjectionsV3', JSON.stringify(data));
 }
 
 // ===== INVESTMENT =====

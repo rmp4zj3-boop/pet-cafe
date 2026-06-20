@@ -73,12 +73,26 @@
                                 <input type="number" id="item-price" class="form-control" placeholder="例：150" min="0">
                             </div>
                             <div class="form-group">
-                                <label>圖片網址（可選）</label>
-                                <input type="url" id="item-image" class="form-control" placeholder="https://...">
+                                <label>品項圖片（可選，直接上傳）</label>
+                                <input type="file" id="item-image-file" class="form-control" accept="image/*" style="padding: 0.25rem 0.5rem;">
+                                <input type="hidden" id="item-image">
+                                <div id="item-image-preview-container" style="margin-top:0.5rem; display:none; align-items:center; gap:0.5rem;">
+                                    <img id="item-image-preview" src="" style="width:50px; height:50px; object-fit:cover; border-radius:6px; border:1px solid #ddd;">
+                                    <button type="button" class="btn btn-danger" id="clear-image-btn" style="padding:0.25rem 0.5rem; font-size:0.8rem;">清除圖片</button>
+                                </div>
                             </div>
                             <div class="form-group full-width">
                                 <label>描述（可選）</label>
                                 <input type="text" id="item-description" class="form-control" placeholder="簡短描述此品項">
+                            </div>
+                            <div class="form-group full-width">
+                                <label style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                    <span>備註群組設定（可設定多個群組，例如：甜度、冰量，選項內單選）</span>
+                                    <button type="button" class="btn btn-primary" id="add-note-group-btn" style="padding:0.25rem 0.6rem; font-size:0.8rem;">＋新增備註群組</button>
+                                </label>
+                                <div id="item-notes-container" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;">
+                                    <!-- Dynamic note group rows will be rendered here -->
+                                </div>
                             </div>
                         </div>
                         <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
@@ -169,7 +183,7 @@
 
                         <!-- Meta: table, type, guests -->
                         <div class="pos-meta-row">
-                            <label>桌號：<input type="text" id="pos-table" class="pos-guests-input" style="width:70px;"
+                            <label>桌號：<input type="text" id="pos-table" class="pos-guests-input" style="width:90px;"
                                     placeholder="桌號"></label>
                             <label><input type="radio" name="pos-order-type" value="內用" checked> 內用</label>
                             <label><input type="radio" name="pos-order-type" value="外帶"> 外帶</label>
@@ -341,8 +355,13 @@
                                     min="0" value="0">
                             </div>
                             <div>
-                                <label style="display:block; font-weight:600; margin-bottom:0.25rem;">➖ 貨款支出</label>
-                                <input type="number" id="set-expenses" class="form-control" placeholder="例：1500" min="0"
+                                <label style="display:block; font-weight:600; margin-bottom:0.25rem;">➖ 食材支出</label>
+                                <input type="number" id="set-expense-ingredients" class="form-control" placeholder="例：1000" min="0"
+                                    value="0">
+                            </div>
+                            <div>
+                                <label style="display:block; font-weight:600; margin-bottom:0.25rem;">➖ 水電雜支</label>
+                                <input type="number" id="set-expense-utilities" class="form-control" placeholder="例：500" min="0"
                                     value="0">
                             </div>
                             <div style="text-align:right;">
@@ -430,12 +449,58 @@
                                     <th style="padding:0.5rem;">訂單時間</th>
                                     <th style="padding:0.5rem;">桌號</th>
                                     <th style="padding:0.5rem;">類型</th>
+                                    <th style="padding:0.5rem;">點單明細</th>
                                     <th style="padding:0.5rem;">折扣</th>
                                     <th style="padding:0.5rem;">總計</th>
                                 </tr>
                             </thead>
                             <tbody id="rev-orders-body"></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Product Popularity Rankings -->
+                <div style="margin-top:2rem; display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+                    <!-- Drinks Ranking -->
+                    <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; border-top:5px solid #36A2EB;">
+                        <h3 style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">☕ 飲品熱銷排行</h3>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid #eee;">
+                                        <th style="padding:0.5rem; width:50px; text-align:center;">排行</th>
+                                        <th style="padding:0.5rem;">品項名稱</th>
+                                        <th style="padding:0.5rem; text-align:center;">點餐次數</th>
+                                        <th style="padding:0.5rem; text-align:center;">銷售份數</th>
+                                        <th style="padding:0.5rem; text-align:right;">銷售總額</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rev-drinks-ranking-body">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Food Ranking -->
+                    <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; border-top:5px solid #FF6384;">
+                        <h3 style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">🍽️ 餐點熱銷排行</h3>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid #eee;">
+                                        <th style="padding:0.5rem; width:50px; text-align:center;">排行</th>
+                                        <th style="padding:0.5rem;">品項名稱</th>
+                                        <th style="padding:0.5rem; text-align:center;">點餐次數</th>
+                                        <th style="padding:0.5rem; text-align:center;">銷售份數</th>
+                                        <th style="padding:0.5rem; text-align:right;">銷售總額</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rev-food-ranking-body">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -500,10 +565,10 @@
                     <table id="projection-table" style="min-width:800px;">
                         <thead>
                             <tr>
-                                <th>項目 / 年度</th>
-                                <th>第 1 年</th>
-                                <th>第 2 年</th>
-                                <th>第 3 年</th>
+                                <th>項目 / 區間</th>
+                                <th>一個月</th>
+                                <th>第一年 (估算)</th>
+                                <th>第二年 (估算)</th>
                             </tr>
                         </thead>
                         <tbody id="projection-body"></tbody>

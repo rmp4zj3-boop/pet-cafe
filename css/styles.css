@@ -238,6 +238,29 @@ main { padding: 2rem 5%; max-width: 1200px; margin: 0 auto; }
     color: var(--text-muted); transition: var(--transition); font-size: 0.9rem;
 }
 .setmeal-none:hover { border-color: var(--text-muted); }
+
+/* Custom note tag option */
+.note-tag-option {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border: 2px solid #e9ecef;
+    border-radius: 20px;
+    cursor: pointer;
+    background: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: var(--transition);
+    user-select: none;
+}
+.note-tag-option:hover {
+    border-color: var(--primary-color);
+    background: #fffaf5;
+}
+.note-tag-option.selected {
+    background: var(--primary-color);
+    color: #fff !important;
+    border-color: var(--primary-color);
+}
 .setmeal-none.selected { border-color: var(--success-color); background: #f0faf8; color: var(--success-color); }
 .sm-selected-preview {
     margin-top: 0.75rem; padding: 0.5rem 0.75rem; background: #fff8f0;
@@ -339,9 +362,10 @@ th { background: #f9f9f9; font-weight: 600; }
 .disc-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
 
 /* POS Table number + order type row */
-.pos-meta-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; font-size: 0.9rem; }
-.pos-meta-row label { display: flex; align-items: center; gap: 0.3rem; font-weight: 500; }
-.pos-guests-input { width: 55px; padding: 0.25rem 0.5rem; border: 1px solid #ccc; border-radius: 6px; text-align: center; }
+.pos-meta-row { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; font-size: 1.15rem; }
+.pos-meta-row label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; }
+.pos-guests-input { width: 85px; padding: 0.4rem 0.6rem; border: 2px solid #ccc; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; }
+.pos-meta-row input[type="radio"] { width: 1.35rem; height: 1.35rem; cursor: pointer; }
 
 /* POS totals */
 .pos-totals { border-top: 2px solid #eee; padding-top: 0.6rem; }
