@@ -1156,12 +1156,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Auto refresh kitchen every 10s if active
+    // ===== 即時同步監聽（Firebase 連線後取代 polling）=====
+    let syncListenersStarted = false;
+
+    function startSyncListeners() {
+        if (syncListenersStarted || !window.PetCafeSync) return;
+        if (!PetCafeSync.isOnline) return;
+        syncListenersStarted = true;
+
+        // 廚房：待出餐訂單即時更新
+        PetCafeSync.syncListen('pendingOrders', (data) => {
+            if (document.getElementById('kitchen-tab').classList.contains('active')) {
+                renderKitchen();
+            }
+            // 更新 POS 數量
+            updatePOSQueueCount();
+        }, 'petCafePendingOrders');
+
+        // 廚房：已出餐紀錄即時更新
+        PetCafeSync.syncListen('servedOrders', (data) => {
+            if (document.getElementById('kitchen-tab').classList.contains('active')) {
+                renderKitchen();
+            }
+        }, 'petCafeServedOrders');
+
+        // POS 待結帳隊列即時更新
+        PetCafeSync.syncListen('posQueue', (data) => {
+            updatePOSQueueCount();
+            if (isQueueViewOpen) renderPOSQueue();
+        }, 'petCafePosQueue');
+
+        // 訂單（完成）即時更新
+        PetCafeSync.syncListen('orders', (data) => {
+            if (document.getElementById('revenue-tab').classList.contains('active')) {
+                renderRevenue();
+            }
+        }, 'petCafeOrders');
+
+        // 菜單即時更新（後台編輯由自己觸發，主要是同步給其他後台裝置）
+        PetCafeSync.syncListen('menu', (newMenu) => {
+            menu = newMenu;
+            renderAdminMenu();
+            if (document.getElementById('pos-tab').classList.contains('active')) {
+                renderPOSCatTabs();
+                renderPOSMenu();
+            }
+        }, 'petCafeMenu');
+
+        console.log('[Admin] Firebase 即時同步監聽已啟動');
+    }
+
+    // Firebase 連線後啟動監聽
+    if (window.PetCafeSync) {
+        PetCafeSync.onStatusChange((online) => {
+            if (online) startSyncListeners();
+        });
+        // 如果已經連線
+        setTimeout(() => { if (PetCafeSync.isOnline) startSyncListeners(); }, 1500);
+    }
+
+    // Fallback polling（無 Firebase 時每 10 秒更新廚房）
     setInterval(() => {
-        if (document.getElementById('kitchen-tab').classList.contains('active')) {
+        if (!syncListenersStarted && document.getElementById('kitchen-tab').classList.contains('active')) {
             renderKitchen();
         }
     }, 10000);
+
 
     // ===== REVENUE =====
     function renderRevenue() {
@@ -2220,6 +2280,124 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCostMatrixTable();
     };
 
+    // ===== 店名設定 =====
     const settings = getSettings();
     document.querySelectorAll('.shop-name-display').forEach(e => e.textContent = settings.shopName);
+
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            const shopName = document.getElementById('setting-shop-name').value.trim() || '毛孩窩';
+            saveSettings({ shopName });
+            document.querySelectorAll('.shop-name-display').forEach(e => e.textContent = shopName);
+            document.title = `後台管理 - ${shopName}`;
+            showFirebaseMsg('✅ 店名已儲存！', 'green');
+        });
+    }
+
+    // ===== Firebase 雲端設定 UI =====
+
+    function showFirebaseMsg(msg, color = '#374151') {
+        const el = document.getElementById('firebase-config-msg');
+        if (!el) return;
+        el.textContent = msg;
+        el.style.color = color;
+        el.style.fontWeight = '600';
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => {
+            el.textContent = '';
+        }, 4000);
+    }
+
+    function updateFirebaseBadge() {
+        const badge = document.getElementById('firebase-status-badge');
+        if (!badge) return;
+        if (window.PetCafeSync && PetCafeSync.isOnline) {
+            badge.textContent = '✅ 已連線';
+            badge.style.background = '#d1fae5';
+            badge.style.color = '#065f46';
+            badge.style.border = '1px solid #6ee7b7';
+        } else if (window.PetCafeSync && PetCafeSync.getConfig()) {
+            badge.textContent = '⚠️ 連線中...';
+            badge.style.background = '#fff3cd';
+            badge.style.color = '#856404';
+            badge.style.border = '1px solid #ffd166';
+        } else {
+            badge.textContent = '未設定';
+            badge.style.background = '#f3f4f6';
+            badge.style.color = '#6b7280';
+            badge.style.border = '1px solid #d1d5db';
+        }
+    }
+
+    // 頁面載入就更新 badge
+    updateFirebaseBadge();
+    if (window.PetCafeSync) {
+        PetCafeSync.onStatusChange(() => updateFirebaseBadge());
+    }
+
+    // 進入設定 tab 時填入已儲存的 config
+    const origTabListener = document.querySelector('[data-target="settings-tab"]');
+    const settingsTabBtn = document.querySelector('.tab-btn[data-target="settings-tab"]');
+    if (settingsTabBtn) {
+        settingsTabBtn.addEventListener('click', () => {
+            const cfgInput = document.getElementById('firebase-config-input');
+            if (cfgInput && window.PetCafeSync) {
+                const existing = PetCafeSync.getConfig();
+                if (existing) {
+                    cfgInput.value = JSON.stringify(existing, null, 2);
+                }
+            }
+            updateFirebaseBadge();
+        });
+    }
+
+    // 連線並儲存按鈕
+    const firebaseSaveBtn = document.getElementById('firebase-save-btn');
+    if (firebaseSaveBtn) {
+        firebaseSaveBtn.addEventListener('click', async () => {
+            const raw = document.getElementById('firebase-config-input').value.trim();
+            if (!raw) { showFirebaseMsg('❗ 請貼入 Firebase 設定內容', '#e65100'); return; }
+            firebaseSaveBtn.disabled = true;
+            firebaseSaveBtn.textContent = '連線中...';
+            try {
+                await PetCafeSync.testAndSaveConfig(raw);
+                showFirebaseMsg('✅ Firebase 連線成功！將自動即時同步所有裝置。', '#065f46');
+                updateFirebaseBadge();
+            } catch (err) {
+                showFirebaseMsg('❌ 連線失敗：' + err.message, '#dc2626');
+            } finally {
+                firebaseSaveBtn.disabled = false;
+                firebaseSaveBtn.textContent = '🔗 連線並儲存';
+            }
+        });
+    }
+
+    // 測試連線按鈕
+    const firebaseTestBtn = document.getElementById('firebase-test-btn');
+    if (firebaseTestBtn) {
+        firebaseTestBtn.addEventListener('click', () => {
+            if (window.PetCafeSync && PetCafeSync.isOnline) {
+                showFirebaseMsg('✅ Firebase 連線正常！即時同步運作中。', '#065f46');
+            } else if (window.PetCafeSync && PetCafeSync.getConfig()) {
+                showFirebaseMsg('⚠️ Firebase 已設定但尚未連線，請檢查網路或 databaseURL 是否正確。', '#856404');
+            } else {
+                showFirebaseMsg('⚠️ 尚未設定 Firebase，目前使用本機模式。', '#6b7280');
+            }
+            updateFirebaseBadge();
+        });
+    }
+
+    // 清除設定按鈕
+    const firebaseClearBtn = document.getElementById('firebase-clear-btn');
+    if (firebaseClearBtn) {
+        firebaseClearBtn.addEventListener('click', () => {
+            if (confirm('確定清除 Firebase 設定？將退回本機模式，資料不會被刪除。')) {
+                PetCafeSync.clearConfig();
+                document.getElementById('firebase-config-input').value = '';
+                showFirebaseMsg('ℹ️ 已清除設定，目前使用本機模式。', '#6b7280');
+                updateFirebaseBadge();
+            }
+        });
+    }
 });

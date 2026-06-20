@@ -601,14 +601,78 @@
                     <h2>基本設定</h2>
                     <button class="btn btn-primary" id="save-settings-btn">儲存設定</button>
                 </div>
-                <div style="background:#fff;padding:1.5rem;border-radius:12px;border:1px solid #ddd;">
+                <div style="background:#fff;padding:1.5rem;border-radius:12px;border:1px solid #ddd;margin-bottom:1.5rem;">
                     <div class="form-group">
                         <label style="font-weight:bold;">店鋪名稱：</label>
                         <input type="text" id="setting-shop-name" class="form-control" style="max-width:400px;"
                             placeholder="例如：毛孩窩">
                         <p style="color:#888;font-size:0.9rem;margin-top:0.5rem;">修改後，前台與後台的店名將會同步更新。</p>
                     </div>
-                    <hr style="margin:1.5rem 0; border:none; border-top:1px solid #eee;">
+                </div>
+
+                <!-- Firebase 雲端同步設定 -->
+                <div style="background:#fff;padding:1.5rem;border-radius:12px;border:1px solid #ddd;margin-bottom:1.5rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                        <div>
+                            <h3 style="margin:0;font-size:1.05rem;">☁️ 雲端即時同步設定</h3>
+                            <p style="margin:0.3rem 0 0;font-size:0.85rem;color:#666;">設定 Firebase 後，所有裝置開啟網頁即可自動同步菜單、訂單等資料。</p>
+                        </div>
+                        <div id="firebase-status-badge" style="padding:0.35rem 0.9rem;border-radius:20px;font-size:0.8rem;font-weight:600;background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;">未設定</div>
+                    </div>
+
+                    <!-- 步驟說明 -->
+                    <div id="firebase-setup-guide" style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:0.875rem;">
+                        <p style="font-weight:700;margin-bottom:0.5rem;">📋 設定步驟（一次性，免費）：</p>
+                        <ol style="margin:0;padding-left:1.4rem;line-height:1.9;color:#374151;">
+                            <li>前往 <a href="https://console.firebase.google.com/" target="_blank" style="color:#2563eb;font-weight:600;">console.firebase.google.com</a> 建立新專案</li>
+                            <li>在專案中新增「<strong>Realtime Database</strong>」，地區選 <strong>asia-southeast1</strong></li>
+                            <li>資料庫安全規則選「<strong>以測試模式啟動</strong>」（或參考下方進階規則）</li>
+                            <li>前往「專案設定 &gt; 一般」→ 點選「新增應用程式」→ 選 Web (&lt;/&gt;)</li>
+                            <li>複製「firebaseConfig」物件內容，貼入下方輸入框</li>
+                        </ol>
+                    </div>
+
+                    <!-- Config 輸入 -->
+                    <div class="form-group">
+                        <label style="font-weight:600;display:block;margin-bottom:0.4rem;">Firebase 設定 JSON：</label>
+                        <textarea id="firebase-config-input" rows="7"
+                            style="width:100%;font-family:monospace;font-size:0.82rem;padding:0.75rem;border:1.5px solid #d1d5db;border-radius:8px;resize:vertical;background:#f9fafb;"
+                            placeholder='貼上您的 firebaseConfig 物件，例如：
+{
+  "apiKey": "AIza...",
+  "authDomain": "your-project.firebaseapp.com",
+  "databaseURL": "https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "projectId": "your-project",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456",
+  "appId": "1:123456:web:abc"
+}'></textarea>
+                    </div>
+                    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                        <button class="btn btn-primary" id="firebase-save-btn" style="background:#2563eb;">🔗 連線並儲存</button>
+                        <button class="btn" id="firebase-test-btn" style="background:#10b981;color:white;">✅ 測試連線</button>
+                        <button class="btn" id="firebase-clear-btn" style="background:#ef4444;color:white;">🗑️ 清除設定（退回本機模式）</button>
+                    </div>
+                    <div id="firebase-config-msg" style="margin-top:0.75rem;font-size:0.88rem;"></div>
+
+                    <!-- 進階：安全規則 -->
+                    <details style="margin-top:1.25rem;">
+                        <summary style="cursor:pointer;font-weight:600;color:#374151;font-size:0.875rem;">🔐 進階：推薦的資料庫安全規則</summary>
+                        <div style="background:#1e1e1e;color:#d4d4d4;border-radius:8px;padding:1rem;margin-top:0.75rem;font-family:monospace;font-size:0.8rem;overflow-x:auto;">
+<pre style="margin:0;">{
+  "rules": {
+    "petcafe": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}</pre>
+                        </div>
+                        <p style="font-size:0.8rem;color:#6b7280;margin-top:0.5rem;">⚠️ 測試期間可用上述規則。正式營運後建議加入 IP 限制或身份驗證。</p>
+                    </details>
+                </div>
+
+                <div style="background:#fff;padding:1.5rem;border-radius:12px;border:1px solid #ddd;">
                     <h3 style="margin-bottom:1rem;font-size:1rem;">🖨️ 硬體裝置說明</h3>
                     <div style="background:#f8f9fa;border-radius:10px;padding:1rem;font-size:0.9rem;color:#555;">
                         <p><strong>條碼讀取機</strong>：插入 USB 後，掃描結果會直接輸入至當前選中的文字框，無需額外設定。</p>
@@ -708,6 +772,7 @@
 
     </main>
 
+    <script src="js/firebase-sync.js"></script>
     <script src="js/data.js"></script>
     <script src="js/admin.js"></script>
 </body>

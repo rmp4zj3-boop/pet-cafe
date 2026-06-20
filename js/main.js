@@ -58,6 +58,44 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCartUI();
     initShopName();
 
+    // ===== 即時同步：Firebase 連線後自動更新前台 =====
+    function startFrontendSync() {
+        if (!window.PetCafeSync || !PetCafeSync.isOnline) return;
+
+        // 菜單變更→ 自動重新渲染
+        PetCafeSync.syncListen('menu', (newMenu) => {
+            menu = newMenu;
+            renderCategoryTabs();
+            renderMenu();
+        }, 'petCafeMenu');
+
+        // 套餐選項變更（已開模式窗口處理）
+        PetCafeSync.syncListen('setMealOptions', () => {}, 'petCafeSetMealOptions');
+
+        // 飲品尺寸變更
+        PetCafeSync.syncListen('drinkSizes', () => {}, 'petCafeDrinkSizes');
+
+        // 設定（店名）變更
+        PetCafeSync.syncListen('settings', (newSettings) => {
+            if (newSettings && newSettings.shopName) {
+                document.querySelectorAll('.shop-name-display').forEach(el => el.textContent = newSettings.shopName);
+                document.title = `${newSettings.shopName} | 寵物友善咖啡廳`;
+            }
+        }, 'petCafeSettings');
+
+        // 將前台的新訂單同步到 posQueue
+        // (已由 saveCart -> savePosQueueOrders 進行，無需額外監聽)
+
+        console.log('[Frontend] Firebase 即時同步已啟動');
+    }
+
+    if (window.PetCafeSync) {
+        PetCafeSync.onStatusChange((online) => {
+            if (online) startFrontendSync();
+        });
+        setTimeout(() => { if (PetCafeSync.isOnline) startFrontendSync(); }, 1500);
+    }
+
     // ===== CATEGORY TABS =====
     function renderCategoryTabs() {
         categoryTabs.innerHTML = '';

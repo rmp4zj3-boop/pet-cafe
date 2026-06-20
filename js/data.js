@@ -58,6 +58,7 @@ function getSetMealOptions() {
 }
 function saveSetMealOptions(data) {
     localStorage.setItem('petCafeSetMealOptions', JSON.stringify(data));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('setMealOptions', data, 'petCafeSetMealOptions');
 }
 
 // ===== DRINK SIZES =====
@@ -74,6 +75,7 @@ function getDrinkSizes() {
 
 function saveDrinkSizes(sizes) {
     localStorage.setItem('petCafeDrinkSizes', JSON.stringify(sizes));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('drinkSizes', sizes, 'petCafeDrinkSizes');
 }
 
 // ===== DRINK DISCOUNTS (per set meal category) =====
@@ -88,6 +90,7 @@ function getDrinkDiscounts() {
 
 function saveDrinkDiscounts(discounts) {
     localStorage.setItem('petCafeDrinkDiscounts', JSON.stringify(discounts));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('drinkDiscounts', discounts, 'petCafeDrinkDiscounts');
 }
 
 // ===== INGREDIENTS & COST MATRIX =====
@@ -126,6 +129,7 @@ function getIngredients() {
 
 function saveIngredients(list) {
     localStorage.setItem('petCafeIngredients', JSON.stringify(list));
+    // 食材成本屬於後台計算，不需雲端同步
 }
 
 function getCostMatrix() {
@@ -135,6 +139,7 @@ function getCostMatrix() {
 
 function saveCostMatrix(matrix) {
     localStorage.setItem('petCafeCostMatrix', JSON.stringify(matrix));
+    // 成本矩陣屬於後台計算，不需雲端同步
 }
 
 // ===== MENU =====
@@ -146,9 +151,10 @@ function getMenu() {
 }
 function saveMenu(menuList) {
     localStorage.setItem('petCafeMenu', JSON.stringify(menuList));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('menu', menuList, 'petCafeMenu');
 }
 
-// ===== CART =====
+// ===== CART (本機保留，每台裝置各自的購物車) =====
 function getCart() {
     const saved = localStorage.getItem('petCafeCart');
     return saved ? JSON.parse(saved) : [];
@@ -164,6 +170,7 @@ function getOrders() {
 }
 function saveOrders(ordersList) {
     localStorage.setItem('petCafeOrders', JSON.stringify(ordersList));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('orders', ordersList, 'petCafeOrders');
 }
 
 // ===== PENDING ORDERS (waiting for kitchen to serve) =====
@@ -173,6 +180,7 @@ function getPendingOrders() {
 }
 function savePendingOrders(list) {
     localStorage.setItem('petCafePendingOrders', JSON.stringify(list));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('pendingOrders', list, 'petCafePendingOrders');
 }
 
 // ===== POS QUEUE ORDERS (waiting for checkout at POS) =====
@@ -182,6 +190,7 @@ function getPosQueueOrders() {
 }
 function savePosQueueOrders(list) {
     localStorage.setItem('petCafePosQueue', JSON.stringify(list));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('posQueue', list, 'petCafePosQueue');
 }
 
 // ===== SERVED ORDERS (already served, history) =====
@@ -191,6 +200,7 @@ function getServedOrders() {
 }
 function saveServedOrders(list) {
     localStorage.setItem('petCafeServedOrders', JSON.stringify(list));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('servedOrders', list, 'petCafeServedOrders');
 }
 
 // ===== SETTLEMENTS (Daily closeouts) =====
@@ -200,6 +210,7 @@ function getSettlements() {
 }
 function saveSettlements(list) {
     localStorage.setItem('petCafeSettlements', JSON.stringify(list));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('settlements', list, 'petCafeSettlements');
 }
 
 // ===== PROJECTIONS =====
@@ -216,6 +227,7 @@ function getProjections() {
 }
 function saveProjections(data) {
     localStorage.setItem('petCafeProjectionsV3', JSON.stringify(data));
+    // 財務試算屬於後台計算，不需雲端同步
 }
 
 // ===== INVESTMENT =====
@@ -228,6 +240,7 @@ function getInvestment() {
 }
 function saveInvestment(data) {
     localStorage.setItem('petCafeInvestment', JSON.stringify(data));
+    // 投資試算屬於後台計算，不需雲端同步
 }
 
 // ===== SETTINGS =====
@@ -238,6 +251,7 @@ function getSettings() {
 }
 function saveSettings(settings) {
     localStorage.setItem('petCafeSettings', JSON.stringify(settings));
+    if (window.PetCafeSync) PetCafeSync.syncWrite('settings', settings, 'petCafeSettings');
 }
 
 // ===== HELPERS =====
