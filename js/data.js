@@ -97,12 +97,12 @@ function saveDrinkDiscounts(discounts) {
 
 // ===== INGREDIENTS & COST MATRIX =====
 const DEFAULT_INGREDIENTS = [
-    { id: 'ing1', name: '咖啡豆', weight: 1, unit: 'kg', purchasePrice: 600 },
-    { id: 'ing2', name: '全脂鮮奶', weight: 1, unit: 'L', purchasePrice: 90 },
-    { id: 'ing3', name: '焦糖醬', weight: 100, unit: 'ml', purchasePrice: 50 },
-    { id: 'ing4', name: '雞蛋', weight: 10, unit: '顆', purchasePrice: 80 },
-    { id: 'ing5', name: '培根', weight: 20, unit: '片', purchasePrice: 300 },
-    { id: 'ing6', name: '厚片吐司', weight: 10, unit: '片', purchasePrice: 100 }
+    { id: 'ing1', name: '咖啡豆', weight: 1, unit: 'kg', purchasePrice: 600, type: 'drinks' },
+    { id: 'ing2', name: '全脂鮮奶', weight: 1, unit: 'L', purchasePrice: 90, type: 'drinks' },
+    { id: 'ing3', name: '焦糖醬', weight: 100, unit: 'ml', purchasePrice: 50, type: 'drinks' },
+    { id: 'ing4', name: '雞蛋', weight: 10, unit: '顆', purchasePrice: 80, type: 'food' },
+    { id: 'ing5', name: '培根', weight: 20, unit: '片', purchasePrice: 300, type: 'food' },
+    { id: 'ing6', name: '厚片吐司', weight: 10, unit: '片', purchasePrice: 100, type: 'food' }
 ];
 
 const DEFAULT_COST_MATRIX = {
@@ -122,6 +122,11 @@ function getIngredients() {
             }
             if (ing.weight === undefined) ing.weight = 1;
             if (ing.purchasePrice === undefined) ing.purchasePrice = 0;
+            if (!ing.type) {
+                const drinksKeywords = ['咖啡', '奶', '焦糖', '茶', '糖', '蜜', '拿鐵', '豆', '漿', '氣泡', '水', '汁', '檸檬', '香草'];
+                const isDrink = drinksKeywords.some(kw => ing.name && ing.name.includes(kw)) || ['ing1', 'ing2', 'ing3'].includes(ing.id);
+                ing.type = isDrink ? 'drinks' : 'food';
+            }
             return ing;
         });
     } catch (e) {

@@ -425,6 +425,39 @@ th { background: #f9f9f9; font-weight: 600; }
 .setmeal-option-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; }
 .setmeal-option-row input { flex: 1; padding: 0.35rem 0.6rem; border: 1px solid #ccc; border-radius: 6px; font-size: 0.88rem; font-family: inherit; }
 .setmeal-option-row .price-input { width: 80px; flex: none; }
+/* ===================== RESPONSIVE UTILITIES ===================== */
+.grid-responsive-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.grid-sidebar-responsive {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 1.5rem;
+}
+.table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+}
+/* Ensure table responsiveness styling doesn't hide scrollbars */
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
+
+/* Update discount-grid for auto-fit sizing */
+.discount-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+}
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 1024px) {
@@ -434,6 +467,13 @@ th { background: #f9f9f9; font-weight: 600; }
     .pos-layout { grid-template-columns: 1fr; height: auto; }
     .pos-menu-panel { max-height: 50vh; }
     .kitchen-layout { grid-template-columns: 1fr; }
+    .grid-sidebar-responsive { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    .grid-responsive-2col {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
 }
 @media (max-width: 600px) {
     header { padding: 0.6rem 1rem; flex-wrap: wrap; gap: 0.5rem; }
@@ -453,11 +493,6 @@ th { background: #f9f9f9; font-weight: 600; }
     .pos-menu-grid { grid-template-columns: repeat(2, 1fr); }
     .item-form-grid { grid-template-columns: 1fr; }
     .kitchen-layout { grid-template-columns: 1fr; }
-    .discount-grid { grid-template-columns: repeat(5, 1fr); }
-    #revenue-tab > div:nth-child(2) { grid-template-columns: 1fr !important; gap: 1rem !important; }
-    .investment-section { grid-template-columns: 1fr !important; }
-    .dashboard-grid { grid-template-columns: 1fr !important; }
-    .dashboard-grid > div:last-child { grid-column: 1 !important; }
     #projection-table { min-width: 600px; }
     #rev-today-total, #rev-month-total { font-size: 1.8rem !important; }
 }

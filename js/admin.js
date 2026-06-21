@@ -1630,6 +1630,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function performSettlementForDate(targetDate) {
+        const allOrders = getOrders();
+        const unsettledOrders = allOrders.filter(o => getLocalDateStr(o.date) === targetDate && !o.isSettled);
+
+        if (unsettledOrders.length === 0) return false;
+
+        let totalRevenue = 0;
+        let totalDiscount = 0;
+        let totalGuests = 0;
+        let dineInCount = 0;
+        let takeoutCount = 0;
+        const categoryStats = {};
+        const itemStats = {};
+
+        unsettledOrders.forEach(o => {
+            totalRevenue += o.total;
+            totalDiscount += (o.discount || 0);
+            totalGuests += (o.guests || 1);
+            if (o.type === '內用') dineInCount++;
+            else takeoutCount++;
+
+            o.items.forEach(item => {
+                if (!itemStats[item.name]) itemStats[item.name] = { qty: 0, revenue: 0 };
+                itemStats[item.name].qty += item.qty;
+                itemStats[item.name].revenue += item.price * item.qty;
+
+                const menuItem = menu.find(m => m.id === item.id);
+                const cat = menuItem ? menuItem.category : 'other';
+                if (!categoryStats[cat]) categoryStats[cat] = 0;
+                categoryStats[cat] += item.price * item.qty;
+            });
+        });
+
+        const petty = parseInt(setPettyCash.value, 10) || 0;
+        const expIngredients = parseInt(setExpenseIngredients.value, 10) || 0;
+        const expUtilities = parseInt(setExpenseUtilities.value, 10) || 0;
+
+        const settlementRecord = {
+            id: 'SET' + Date.now() + Math.random().toString(36).substr(2, 5),
+            date: targetDate,
+            timestamp: new Date().toISOString(),
+            revenue: totalRevenue,
+            ordersCount: unsettledOrders.length,
+            guestsCount: totalGuests,
+            dineInCount,
+            takeoutCount,
+            totalDiscount,
+            pettyCash: petty,
+            expenseIngredients: expIngredients,
+            expenseUtilities: expUtilities,
+            expenses: expIngredients + expUtilities,
+            remittance: totalRevenue - petty - expIngredients - expUtilities,
+            categoryStats,
+            itemStats
+        };
+        const settlements = getSettlements();
+        settlements.push(settlementRecord);
+        saveSettlements(settlements);
+
+        // Mark orders as settled
+        allOrders.forEach(o => {
+            if (getLocalDateStr(o.date) === targetDate && !o.isSettled) {
+                o.isSettled = true;
+            }
+        });
+        saveOrders(allOrders);
+        return true;
+    }
+
     const confirmSetBtn = document.getElementById('confirm-settlement-btn');
     if (confirmSetBtn) {
         confirmSetBtn.addEventListener('click', () => {
@@ -1646,76 +1715,312 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Build the snapshots
-            let totalRevenue = 0;
-            let totalDiscount = 0;
-            let totalGuests = 0;
-            let dineInCount = 0;
-            let takeoutCount = 0;
-            const categoryStats = {};
-            const itemStats = {};
+            const success = performSettlementForDate(targetDate);
+            if (success) {
+                alert('結算完成！數據已成功留存。');
+                setPettyCash.value = '0';
+                setExpenseIngredients.value = '';
+                setExpenseUtilities.value = '';
+                renderSettlement();
+                if (typeof renderProjections === 'function') renderProjections();
+            }
+        });
+    }
 
-            unsettledOrders.forEach(o => {
-                totalRevenue += o.total;
-                totalDiscount += (o.discount || 0);
-                totalGuests += (o.guests || 1);
-                if (o.type === '內用') dineInCount++;
-                else takeoutCount++;
+    const clearTodayDataBtn = document.getElementById('clear-today-data-btn');
+    if (clearTodayDataBtn) {
+        clearTodayDataBtn.addEventListener('click', () => {
+            const targetDate = setDateInput.value;
+            const allOrders = getOrders();
+            const todayOrders = allOrders.filter(o => getLocalDateStr(o.date) === targetDate);
 
-                o.items.forEach(item => {
-                    if (!itemStats[item.name]) itemStats[item.name] = { qty: 0, revenue: 0 };
-                    itemStats[item.name].qty += item.qty;
-                    itemStats[item.name].revenue += item.price * item.qty;
+            if (todayOrders.length === 0) {
+                alert('今日尚無任何訂單數據可清除！');
+                return;
+            }
 
-                    const menuItem = menu.find(m => m.id === item.id);
-                    const cat = menuItem ? menuItem.category : 'other';
-                    if (!categoryStats[cat]) categoryStats[cat] = 0;
-                    categoryStats[cat] += item.price * item.qty;
-                });
-            });
-
-            const petty = parseInt(setPettyCash.value, 10) || 0;
-            const expIngredients = parseInt(setExpenseIngredients.value, 10) || 0;
-            const expUtilities = parseInt(setExpenseUtilities.value, 10) || 0;
-
-            const settlementRecord = {
-                id: 'SET' + Date.now(),
-                date: targetDate,
-                timestamp: new Date().toISOString(),
-                revenue: totalRevenue,
-                ordersCount: unsettledOrders.length,
-                guestsCount: totalGuests,
-                dineInCount,
-                takeoutCount,
-                totalDiscount,
-                pettyCash: petty,
-                expenseIngredients: expIngredients,
-                expenseUtilities: expUtilities,
-                expenses: expIngredients + expUtilities,
-                remittance: totalRevenue - petty - expIngredients - expUtilities,
-                categoryStats,
-                itemStats
-            };
-            const settlements = getSettlements();
-            settlements.push(settlementRecord);
-            saveSettlements(settlements);
-
-            // Mark orders as settled
-            allOrders.forEach(o => {
-                if (getLocalDateStr(o.date) === targetDate && !o.isSettled) {
-                    o.isSettled = true;
+            const unsettledOrders = todayOrders.filter(o => !o.isSettled);
+            if (unsettledOrders.length > 0) {
+                if (confirm(`系統檢測到今日有 ${unsettledOrders.length} 筆未結算訂單。\n清除數據前，系統將自動進行「當日結算」並存入歷史紀錄，確定要繼續嗎？`)) {
+                    performSettlementForDate(targetDate);
+                } else {
+                    return;
                 }
-            });
-            saveOrders(allOrders);
+            } else {
+                if (!confirm('確定要清除今日的所有訂單數據嗎？（歷史結算紀錄仍會妥善保留）')) {
+                    return;
+                }
+            }
 
-            alert('結算完成！數據已成功留存。');
+            // Remove today's orders
+            const remainingOrders = getOrders().filter(o => getLocalDateStr(o.date) !== targetDate);
+            saveOrders(remainingOrders);
 
-            // Clear page
             setPettyCash.value = '0';
             setExpenseIngredients.value = '';
             setExpenseUtilities.value = '';
+
+            alert('今日訂單數據已清除，歷史結算紀錄已安全存檔！');
             renderSettlement();
+            if (typeof renderRevenue === 'function') renderRevenue();
+            if (typeof renderProjections === 'function') renderProjections();
         });
+    }
+
+    const clearAllRevenueBtn = document.getElementById('clear-all-revenue-btn');
+    if (clearAllRevenueBtn) {
+        clearAllRevenueBtn.addEventListener('click', () => {
+            const allOrders = getOrders();
+            if (allOrders.length === 0) {
+                alert('目前沒有任何營收數據可清除！');
+                return;
+            }
+
+            const unsettledOrders = allOrders.filter(o => !o.isSettled);
+            if (unsettledOrders.length > 0) {
+                if (confirm(`系統檢測到有 ${unsettledOrders.length} 筆未結算的訂單。\n清除前，系統將自動依據日期將這些訂單全部結算並存入歷史紀錄，然後清除所有原始點單數據。是否繼續？`)) {
+                    const unsettledDates = Array.from(new Set(unsettledOrders.map(o => getLocalDateStr(o.date))));
+                    unsettledDates.forEach(date => {
+                        performSettlementForDate(date);
+                    });
+                } else {
+                    return;
+                }
+            } else {
+                if (!confirm('確認要清除所有歷史點單數據嗎？（已結算之歷史統計報表將予以保留）')) {
+                    return;
+                }
+            }
+
+            saveOrders([]);
+            alert('所有點單數據已清除，歷史結算統計報表已妥善保留！');
+            
+            if (typeof renderRevenue === 'function') renderRevenue();
+            if (typeof renderSettlement === 'function') renderSettlement();
+            if (typeof renderProjections === 'function') renderProjections();
+        });
+    }
+
+    // ===== MONTHLY SETTLEMENT LOGIC =====
+    const viewMonthlyBtn = document.getElementById('view-monthly-settlement-btn');
+    const monthlyModal = document.getElementById('monthly-settlement-modal');
+    const closeMonthlyBtn = document.getElementById('close-monthly-settlement-btn');
+    const calculateMonthlyBtn = document.getElementById('calculate-monthly-btn');
+    const monthlySelect = document.getElementById('monthly-settlement-select');
+    const printMonthlyBtn = document.getElementById('print-monthly-btn');
+
+    if (viewMonthlyBtn) {
+        viewMonthlyBtn.addEventListener('click', () => {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            const currentMonthStr = (new Date(Date.now() - tzoffset)).toISOString().substring(0, 7);
+            if (monthlySelect) {
+                monthlySelect.value = currentMonthStr;
+            }
+            renderMonthlySettlementReport(currentMonthStr);
+            if (monthlyModal) monthlyModal.style.display = 'flex';
+        });
+    }
+
+    if (closeMonthlyBtn) {
+        closeMonthlyBtn.addEventListener('click', () => {
+            if (monthlyModal) monthlyModal.style.display = 'none';
+        });
+    }
+
+    if (calculateMonthlyBtn) {
+        calculateMonthlyBtn.addEventListener('click', () => {
+            if (monthlySelect) {
+                renderMonthlySettlementReport(monthlySelect.value);
+            }
+        });
+    }
+
+    if (printMonthlyBtn) {
+        printMonthlyBtn.addEventListener('click', () => {
+            const style = document.createElement('style');
+            style.innerHTML = `
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #monthly-print-area, #monthly-print-area * {
+                        visibility: visible;
+                    }
+                    #monthly-print-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        background: #fff !important;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            window.print();
+            document.head.removeChild(style);
+        });
+    }
+
+    function renderMonthlySettlementReport(monthStr) {
+        const printArea = document.getElementById('monthly-print-area');
+        if (!printArea) return;
+
+        const settlements = getSettlements().filter(s => s.date.startsWith(monthStr));
+        
+        if (settlements.length === 0) {
+            printArea.innerHTML = `
+                <div style="text-align:center; padding:3rem; background:#fff; border-radius:8px; border:1px solid #ddd; color:#888;">
+                    <h3>⚠️ 該月份 (${monthStr}) 尚無任何日結算數據</h3>
+                    <p style="margin-top:0.5rem;">請先在當日結算頁面完成每日的「確認結算」。</p>
+                </div>
+            `;
+            return;
+        }
+
+        let totalRevenue = 0;
+        let totalDiscount = 0;
+        let totalOrders = 0;
+        let totalGuests = 0;
+        let dineInCount = 0;
+        let takeoutCount = 0;
+        let totalPettyCash = 0;
+        let totalIngredients = 0;
+        let totalUtilities = 0;
+        let totalRemittance = 0;
+        
+        const categoryStats = {};
+        const itemStats = {};
+
+        settlements.forEach(s => {
+            totalRevenue += (s.revenue || 0);
+            totalDiscount += (s.totalDiscount || 0);
+            totalOrders += (s.ordersCount || 0);
+            totalGuests += (s.guestsCount || 0);
+            dineInCount += (s.dineInCount || 0);
+            takeoutCount += (s.takeoutCount || 0);
+            totalPettyCash += (s.pettyCash || 0);
+            totalIngredients += (s.expenseIngredients !== undefined ? s.expenseIngredients : (s.expenses || 0));
+            totalUtilities += (s.expenseUtilities || 0);
+            totalRemittance += (s.remittance || 0);
+
+            if (s.categoryStats) {
+                Object.entries(s.categoryStats).forEach(([cat, amount]) => {
+                    categoryStats[cat] = (categoryStats[cat] || 0) + amount;
+                });
+            }
+
+            if (s.itemStats) {
+                Object.entries(s.itemStats).forEach(([name, stat]) => {
+                    if (!itemStats[name]) itemStats[name] = { qty: 0, revenue: 0 };
+                    itemStats[name].qty += stat.qty;
+                    itemStats[name].revenue += stat.revenue;
+                });
+            }
+        });
+
+        let catHtml = '';
+        const totalCatRev = Object.values(categoryStats).reduce((a, b) => a + b, 0);
+        Object.keys(categoryStats).forEach(catId => {
+            const catInfo = getCategoryInfo(catId);
+            const amount = categoryStats[catId];
+            const pct = totalCatRev ? Math.round((amount / totalCatRev) * 100) : 0;
+            catHtml += `
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:0.6rem 0; text-align:left;">${catInfo.icon} ${catInfo.label}</td>
+                    <td style="padding:0.6rem 0; text-align:right; font-weight:600;">NT$ ${amount.toLocaleString()}</td>
+                    <td style="padding:0.6rem 0; text-align:right; color:#666;">${pct}%</td>
+                </tr>
+            `;
+        });
+
+        let itemHtml = '';
+        const sortedItems = Object.entries(itemStats).sort((a, b) => b[1].revenue - a[1].revenue);
+        sortedItems.forEach(([name, stat]) => {
+            itemHtml += `
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:0.6rem 0; text-align:left;">${name}</td>
+                    <td style="padding:0.6rem 0; text-align:center; font-weight:600;">${stat.qty}</td>
+                    <td style="padding:0.6rem 0; text-align:right; font-weight:600; color:#2e7d32;">NT$ ${stat.revenue.toLocaleString()}</td>
+                </tr>
+            `;
+        });
+
+        printArea.innerHTML = `
+            <div style="background:#fff; border-radius:12px; padding:2rem; border:1px solid #ddd;">
+                <h2 style="text-align:center; margin-bottom:0.25rem; color:#009688;">🐾 <span class="shop-name-display">${getSettings().shopName}</span> - 月底統計結算單</h2>
+                <p style="text-align:center; color:#666; margin-bottom:2rem; font-size:1.1rem; font-weight:600;">結算月份：${monthStr}</p>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+                    <div class="stat-card" style="border-top:4px solid #009688; background:#f9f9f9; padding:1rem; border-radius:8px; border-left:1px solid #eee; border-right:1px solid #eee; border-bottom:1px solid #eee;">
+                        <h3 style="font-size:0.9rem; color:#666; margin:0;">💰 月總營業額</h3>
+                        <div class="val" style="font-size:1.5rem; margin:0.5rem 0; font-weight:bold; color:#00796b;">NT$ ${totalRevenue.toLocaleString()}</div>
+                        <div class="sub-val" style="font-size:0.8rem; color:#888;">總折扣額：NT$ ${totalDiscount.toLocaleString()}</div>
+                    </div>
+                    <div class="stat-card" style="border-top:4px solid #009688; background:#f9f9f9; padding:1rem; border-radius:8px; border-left:1px solid #eee; border-right:1px solid #eee; border-bottom:1px solid #eee;">
+                        <h3 style="font-size:0.9rem; color:#666; margin:0;">🧾 月總單數 / 人數</h3>
+                        <div class="val" style="font-size:1.5rem; margin:0.5rem 0; font-weight:bold; color:#00796b;">${totalOrders} 筆</div>
+                        <div class="sub-val" style="font-size:0.8rem; color:#888;">總來客數：${totalGuests} 人</div>
+                    </div>
+                    <div class="stat-card" style="border-top:4px solid #009688; background:#f9f9f9; padding:1rem; border-radius:8px; border-left:1px solid #eee; border-right:1px solid #eee; border-bottom:1px solid #eee;">
+                        <h3 style="font-size:0.9rem; color:#666; margin:0;">🍽️ 訂單類型佔比</h3>
+                        <div class="val" style="font-size:1.2rem; margin:0.5rem 0; font-weight:bold; color:#00796b;">內用：${dineInCount} 筆</div>
+                        <div class="sub-val" style="font-size:0.8rem; color:#888;">外帶：${takeoutCount} 筆</div>
+                    </div>
+                    <div class="stat-card" style="border-top:4px solid #009688; background:#f9f9f9; padding:1rem; border-radius:8px; border-left:1px solid #eee; border-right:1px solid #eee; border-bottom:1px solid #eee;">
+                        <h3 style="font-size:0.9rem; color:#666; margin:0;">👤 月均客單價</h3>
+                        <div class="val" style="font-size:1.5rem; margin:0.5rem 0; font-weight:bold; color:#00796b;">NT$ ${(totalGuests ? Math.round(totalRevenue / totalGuests) : 0).toLocaleString()}</div>
+                        <div class="sub-val" style="font-size:0.8rem; color:#888;">每桌均價：NT$ ${(totalOrders ? Math.round(totalRevenue / totalOrders) : 0).toLocaleString()}</div>
+                    </div>
+                </div>
+
+                <div style="background:#e0f2f1; border-radius:12px; padding:1.5rem; border:2px solid #80cbc4; margin-bottom:2rem;">
+                    <h3 style="margin-top:0; margin-bottom:1rem; color:#00796b;">💼 月度收支與實收統計</h3>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; align-items:center;">
+                        <div><label style="display:block; font-weight:600; font-size:0.85rem; color:#00796b; margin-bottom:0.25rem;">總營業額</label><div style="font-size:1.25rem; font-weight:bold;">NT$ ${totalRevenue.toLocaleString()}</div></div>
+                        <div><label style="display:block; font-weight:600; font-size:0.85rem; color:#00796b; margin-bottom:0.25rem;">➖ 總留存零用金</label><div style="font-size:1.25rem; color:#555;">NT$ ${totalPettyCash.toLocaleString()}</div></div>
+                        <div><label style="display:block; font-weight:600; font-size:0.85rem; color:#00796b; margin-bottom:0.25rem;">➖ 食材總支出</label><div style="font-size:1.25rem; color:#c62828; font-weight:600;">NT$ ${totalIngredients.toLocaleString()}</div></div>
+                        <div><label style="display:block; font-weight:600; font-size:0.85rem; color:#00796b; margin-bottom:0.25rem;">➖ 水電雜支總額</label><div style="font-size:1.25rem; color:#ef6c00; font-weight:600;">NT$ ${totalUtilities.toLocaleString()}</div></div>
+                        <div style="text-align:right;"><label style="display:block; font-weight:700; font-size:0.9rem; color:#00796b; margin-bottom:0.25rem;">🏦 月度實收總匯款</label><div style="font-size:1.8rem; font-weight:800; color:#00796b;">NT$ ${totalRemittance.toLocaleString()}</div></div>
+                    </div>
+                </div>
+
+                <div class="grid-responsive-2col">
+                    <div style="background:#fff; padding:1.25rem; border-radius:8px; border:1px solid #eee;">
+                        <h3 style="margin-top:0; margin-bottom:0.75rem; border-bottom:2px solid #009688; padding-bottom:0.5rem; color:#00796b; font-size:1.05rem;">📊 各分類月營收</h3>
+                        <div class="table-responsive">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid #eee; text-align:left;">
+                                        <th style="padding:0.5rem 0;">分類</th>
+                                        <th style="padding:0.5rem 0; text-align:right;">營收</th>
+                                        <th style="padding:0.5rem 0; text-align:right;">佔比</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${catHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div style="background:#fff; padding:1.25rem; border-radius:8px; border:1px solid #eee;">
+                        <h3 style="margin-top:0; margin-bottom:0.75rem; border-bottom:2px solid #009688; padding-bottom:0.5rem; color:#00796b; font-size:1.05rem;">🏆 當月熱銷排行</h3>
+                        <div style="max-height:300px; overflow-y:auto;" class="table-responsive">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid #eee; text-align:left;">
+                                        <th style="padding:0.5rem 0;">商品名稱</th>
+                                        <th style="padding:0.5rem 0; text-align:center;">數量</th>
+                                        <th style="padding:0.5rem 0; text-align:right;">小計</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${itemHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     // ===== HISTORY LOGIC =====
@@ -1844,20 +2149,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+            <div class="grid-responsive-2col">
                 <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd;">
                     <h3 style="margin-bottom:1rem; border-bottom:2px solid #eee; padding-bottom:0.5rem;">📊 各分類營收</h3>
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead><tr style="border-bottom:2px solid #eee;"><th style="padding:0.5rem 0;">分類</th><th style="padding:0.5rem 0; text-align:right;">營收</th><th style="padding:0.5rem 0; text-align:right;">佔比</th></tr></thead>
-                        <tbody>${catHtml}</tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead><tr style="border-bottom:2px solid #eee;"><th style="padding:0.5rem 0;">分類</th><th style="padding:0.5rem 0; text-align:right;">營收</th><th style="padding:0.5rem 0; text-align:right;">佔比</th></tr></thead>
+                            <tbody>${catHtml}</tbody>
+                        </table>
+                    </div>
                 </div>
                 <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd;">
                     <h3 style="margin-bottom:1rem; border-bottom:2px solid #eee; padding-bottom:0.5rem;">🏆 商品銷售排行</h3>
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead><tr style="border-bottom:2px solid #eee;"><th style="padding:0.5rem 0;">商品名稱</th><th style="padding:0.5rem 0; text-align:center;">數量</th><th style="padding:0.5rem 0; text-align:right;">小計</th></tr></thead>
-                        <tbody>${itemHtml}</tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead><tr style="border-bottom:2px solid #eee;"><th style="padding:0.5rem 0;">商品名稱</th><th style="padding:0.5rem 0; text-align:center;">數量</th><th style="padding:0.5rem 0; text-align:right;">小計</th></tr></thead>
+                            <tbody>${itemHtml}</tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -1904,10 +2213,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const actualDailyCustomers = actualWorkDays > 0 ? Math.round(actualTotalGuests / actualWorkDays) : 0;
         const actualAvgTicketPrice = actualTotalGuests > 0 ? Math.round(actualTotalRevenue / actualTotalGuests) : 0;
 
+        let syncChanged = false;
+
         if (actualWorkDays > 0) {
-            projections[0].dailyCustomers = actualDailyCustomers;
-            projections[0].workDaysPerMonth = actualWorkDays;
-            projections[0].avgTicketPrice = actualAvgTicketPrice;
+            if (projections[0].dailyCustomers !== actualDailyCustomers ||
+                projections[0].workDaysPerMonth !== actualWorkDays ||
+                projections[0].avgTicketPrice !== actualAvgTicketPrice) {
+                projections[0].dailyCustomers = actualDailyCustomers;
+                projections[0].workDaysPerMonth = actualWorkDays;
+                projections[0].avgTicketPrice = actualAvgTicketPrice;
+                syncChanged = true;
+            }
         }
 
         // 2. Calculate actual expenses for the current month (Link 2: Settlement linkage)
@@ -1918,9 +2234,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalSettledIngredients = monthSettlements.reduce((sum, s) => sum + (s.expenseIngredients || 0), 0);
             const totalSettledUtilities = monthSettlements.reduce((sum, s) => sum + (s.expenseUtilities || 0), 0);
 
-            const workDays = projections[0].workDaysPerMonth || 26;
-            projections[0].ingredientCost = Math.round((totalSettledIngredients / settledDays) * workDays);
-            projections[0].utilityCost = Math.round((totalSettledUtilities / settledDays) * workDays);
+            if (projections[0].ingredientCost !== totalSettledIngredients ||
+                projections[0].utilityCost !== totalSettledUtilities) {
+                projections[0].ingredientCost = totalSettledIngredients;
+                projections[0].utilityCost = totalSettledUtilities;
+                syncChanged = true;
+            }
+        }
+
+        if (syncChanged) {
+            saveProjections(projections);
         }
 
         // 3. Automatically estimate Year 1 (index 1) and Year 2 (index 2) parameters from Column 0 ("一個月")
@@ -2134,10 +2457,45 @@ document.addEventListener('DOMContentLoaded', () => {
     let ingredients = getIngredients();
     let costMatrix = getCostMatrix();
 
+    function getCostRates() {
+        const saved = localStorage.getItem('petCafeCostRates');
+        return saved ? JSON.parse(saved) : { drinks: 30, food: 35 };
+    }
+    
+    function saveCostRates(rates) {
+        localStorage.setItem('petCafeCostRates', JSON.stringify(rates));
+    }
+
+    function saveCurrentIngredientsState() {
+        const drinksRows = document.querySelectorAll('#ingredients-editor-list-drinks > div');
+        const foodRows = document.querySelectorAll('#ingredients-editor-list-food > div');
+        const temp = [];
+
+        const parseRow = (row, type) => {
+            const nameInp = row.querySelector('.ing-name-input');
+            if (!nameInp) return;
+            const name = nameInp.value.trim();
+            const weight = parseFloat(row.querySelector('.ing-weight-input').value) || 1;
+            const unit = row.querySelector('.ing-unit-input').value.trim();
+            const purchasePrice = parseFloat(row.querySelector('.ing-price-input').value) || 0;
+            const idx = parseInt(nameInp.dataset.idx, 10);
+            const id = ingredients[idx]?.id || 'ing_' + Date.now() + Math.random();
+            temp.push({ id, name, weight, unit, purchasePrice, type });
+        };
+
+        drinksRows.forEach(row => parseRow(row, 'drinks'));
+        foodRows.forEach(row => parseRow(row, 'food'));
+        ingredients = temp;
+    }
+
     function renderIngredientsEditor() {
-        const listEl = document.getElementById('ingredients-editor-list');
-        if (!listEl) return;
-        listEl.innerHTML = '';
+        const drinksListEl = document.getElementById('ingredients-editor-list-drinks');
+        const foodListEl = document.getElementById('ingredients-editor-list-food');
+        if (!drinksListEl || !foodListEl) return;
+
+        drinksListEl.innerHTML = '';
+        foodListEl.innerHTML = '';
+
         ingredients.forEach((ing, index) => {
             const div = document.createElement('div');
             div.style.display = 'grid';
@@ -2148,18 +2506,25 @@ document.addEventListener('DOMContentLoaded', () => {
             div.style.padding = '5px';
             div.style.border = '1px solid #eee';
             div.style.borderRadius = '6px';
+            div.style.marginBottom = '2px';
             div.innerHTML = `
                 <input type="text" class="form-control ing-name-input" data-idx="${index}" value="${ing.name || ''}" placeholder="原料" style="padding:4px; font-size:0.8rem;">
                 <input type="number" class="form-control ing-weight-input" data-idx="${index}" value="${ing.weight !== undefined ? ing.weight : 1}" placeholder="重量" style="padding:4px; font-size:0.8rem; text-align:center;" min="0.001" step="any">
                 <input type="text" class="form-control ing-unit-input" data-idx="${index}" value="${ing.unit || ''}" placeholder="單位" style="padding:4px; font-size:0.8rem; text-align:center;">
-                <input type="number" class="form-control ing-price-input" data-idx="${index}" value="${ing.purchasePrice !== undefined ? ing.purchasePrice : 0}" placeholder="進貨金額" style="padding:4px; font-size:0.8rem; text-align:right;" min="0" step="any">
+                <input type="number" class="form-control ing-price-input" data-idx="${index}" value="${ing.purchasePrice !== undefined ? ing.purchasePrice : 0}" placeholder="金額" style="padding:4px; font-size:0.8rem; text-align:right;" min="0" step="any">
                 <button class="btn btn-danger" onclick="deleteIngredient(${index})" style="padding:4px 8px; font-size:0.8rem;">X</button>
             `;
-            listEl.appendChild(div);
+
+            if (ing.type === 'drinks') {
+                drinksListEl.appendChild(div);
+            } else {
+                foodListEl.appendChild(div);
+            }
         });
     }
 
     window.deleteIngredient = function (index) {
+        saveCurrentIngredientsState();
         const ing = ingredients[index];
         if (confirm(`確定要刪除「${ing.name}」嗎？這將會清除所有餐點中使用此原料的用量設定。`)) {
             const ingId = ing.id;
@@ -2174,22 +2539,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const addIngBtn = document.getElementById('add-ingredient-btn');
-    if (addIngBtn) {
-        addIngBtn.addEventListener('click', () => {
+    const addIngDrinksBtn = document.getElementById('add-ingredient-drinks-btn');
+    if (addIngDrinksBtn) {
+        addIngDrinksBtn.addEventListener('click', () => {
+            saveCurrentIngredientsState();
             ingredients.push({
                 id: 'ing_' + Date.now(),
-                name: '新原料',
+                name: '新飲料原料',
                 weight: 1,
                 unit: '份',
-                purchasePrice: 0
+                purchasePrice: 0,
+                type: 'drinks'
             });
             renderIngredientsEditor();
             renderCostMatrixTable();
         });
     }
 
-    function renderSingleMatrixTable(table, items) {
+    const addIngFoodBtn = document.getElementById('add-ingredient-food-btn');
+    if (addIngFoodBtn) {
+        addIngFoodBtn.addEventListener('click', () => {
+            saveCurrentIngredientsState();
+            ingredients.push({
+                id: 'ing_' + Date.now(),
+                name: '新餐點食材',
+                weight: 1,
+                unit: '份',
+                purchasePrice: 0,
+                type: 'food'
+            });
+            renderIngredientsEditor();
+            renderCostMatrixTable();
+        });
+    }
+
+    function renderSingleMatrixTable(table, items, type) {
         if (!table) return;
         table.innerHTML = '';
 
@@ -2197,6 +2581,10 @@ document.addEventListener('DOMContentLoaded', () => {
             table.innerHTML = '<tr><td style="padding:10px; color:#888;">此類別尚無任何品項</td></tr>';
             return;
         }
+
+        const filteredIngredients = ingredients.filter(ing => ing.type === type);
+        const rates = getCostRates();
+        const targetRate = type === 'drinks' ? rates.drinks : rates.food;
 
         const thead = document.createElement('thead');
         const headerTr = document.createElement('tr');
@@ -2220,7 +2608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         table.appendChild(thead);
 
         const tbody = document.createElement('tbody');
-        ingredients.forEach(ing => {
+        filteredIngredients.forEach(ing => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #eee';
 
@@ -2258,6 +2646,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <td colspan="3" style="padding:8px; border:1px solid #dee2e6; text-align:right; font-weight:bold; color:#b71c1c;">💰 總食材成本</td>
         `;
 
+        const suggestedTr = document.createElement('tr');
+        suggestedTr.style.background = '#e3f2fd';
+        let suggestedHtml = `
+            <td colspan="3" style="padding:8px; border:1px solid #dee2e6; text-align:right; font-weight:bold; color:#0d47a1;">💡 建議售價 (${targetRate}%)</td>
+        `;
+
         const priceTr = document.createElement('tr');
         priceTr.style.background = '#f4f6f9';
         let priceHtml = `
@@ -2289,10 +2683,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const price = item.price || 0;
             const profit = price - totalCost;
             const marginPct = price ? Math.round((profit / price) * 100) : 0;
+            const suggestedPrice = targetRate ? Math.round(totalCost / (targetRate / 100)) : 0;
 
             costHtml += `
                 <td style="padding:8px; border:1px solid #dee2e6; font-weight:bold; color:#b71c1c;" id="total-cost-${item.id}">
                     NT$ ${totalCost.toFixed(1)}
+                </td>
+            `;
+            suggestedHtml += `
+                <td style="padding:8px; border:1px solid #dee2e6; font-weight:bold; color:#0d47a1;" id="suggested-price-${item.id}">
+                    NT$ ${suggestedPrice}
                 </td>
             `;
             priceHtml += `
@@ -2313,11 +2713,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         costTr.innerHTML = costHtml;
+        suggestedTr.innerHTML = suggestedHtml;
         priceTr.innerHTML = priceHtml;
         profitTr.innerHTML = profitHtml;
         marginTr.innerHTML = marginHtml;
 
         tbody.appendChild(costTr);
+        tbody.appendChild(suggestedTr);
         tbody.appendChild(priceTr);
         tbody.appendChild(profitTr);
         tbody.appendChild(marginTr);
@@ -2343,9 +2745,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const price = targetItem ? (targetItem.price || 0) : 0;
                 const profit = price - newTotalCost;
                 const marginPct = price ? Math.round((profit / price) * 100) : 0;
+                const suggestedPrice = targetRate ? Math.round(newTotalCost / (targetRate / 100)) : 0;
 
                 const costEl = document.getElementById(`total-cost-${itemId}`);
                 if (costEl) costEl.textContent = `NT$ ${newTotalCost.toFixed(1)}`;
+                
+                const suggestedEl = document.getElementById(`suggested-price-${itemId}`);
+                if (suggestedEl) suggestedEl.textContent = `NT$ ${suggestedPrice}`;
+                
                 const profitEl = document.getElementById(`profit-val-${itemId}`);
                 if (profitEl) profitEl.textContent = `NT$ ${profit.toFixed(1)}`;
 
@@ -2366,34 +2773,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const drinkItems = menuItems.filter(item => ['drinks', 'coffee', 'tea'].includes(item.category));
         const foodItems = menuItems.filter(item => !['drinks', 'coffee', 'tea'].includes(item.category));
 
-        renderSingleMatrixTable(drinksTable, drinkItems);
-        renderSingleMatrixTable(foodTable, foodItems);
+        renderSingleMatrixTable(drinksTable, drinkItems, 'drinks');
+        renderSingleMatrixTable(foodTable, foodItems, 'food');
     }
 
     const saveCostMatrixBtn = document.getElementById('save-cost-matrix-btn');
     if (saveCostMatrixBtn) {
         saveCostMatrixBtn.addEventListener('click', () => {
-            const ingRows = document.querySelectorAll('#ingredients-editor-list > div');
+            const drinksRows = document.querySelectorAll('#ingredients-editor-list-drinks > div');
+            const foodRows = document.querySelectorAll('#ingredients-editor-list-food > div');
             const newIngredients = [];
             let hasDuplicate = false;
             const seenNames = new Set();
 
-            ingRows.forEach(row => {
+            const parseRow = (row, type) => {
                 const nameInp = row.querySelector('.ing-name-input');
+                if (!nameInp) return;
                 const name = nameInp.value.trim();
                 const weight = parseFloat(row.querySelector('.ing-weight-input').value) || 1;
                 const unit = row.querySelector('.ing-unit-input').value.trim();
                 const purchasePrice = parseFloat(row.querySelector('.ing-price-input').value) || 0;
-                const id = ingredients[parseInt(nameInp.dataset.idx, 10)]?.id || 'ing_' + Date.now() + Math.random();
+                const idx = parseInt(nameInp.dataset.idx, 10);
+                const id = ingredients[idx]?.id || 'ing_' + Date.now() + Math.random();
 
                 if (name) {
                     if (seenNames.has(name)) {
                         hasDuplicate = true;
                     }
                     seenNames.add(name);
-                    newIngredients.push({ id, name, weight, unit, purchasePrice });
+                    newIngredients.push({ id, name, weight, unit, purchasePrice, type });
                 }
-            });
+            };
+
+            drinksRows.forEach(row => parseRow(row, 'drinks'));
+            foodRows.forEach(row => parseRow(row, 'food'));
 
             if (hasDuplicate) {
                 alert('警告：原料清單中有重複的原料名稱！');
@@ -2409,9 +2822,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Set up target rates listeners
+    const costRateDrinksInput = document.getElementById('cost-rate-drinks');
+    if (costRateDrinksInput) {
+        costRateDrinksInput.addEventListener('input', () => {
+            const rates = getCostRates();
+            rates.drinks = parseInt(costRateDrinksInput.value, 10) || 30;
+            saveCostRates(rates);
+            renderCostMatrixTable();
+        });
+    }
+
+    const costRateFoodInput = document.getElementById('cost-rate-food');
+    if (costRateFoodInput) {
+        costRateFoodInput.addEventListener('input', () => {
+            const rates = getCostRates();
+            rates.food = parseInt(costRateFoodInput.value, 10) || 35;
+            saveCostRates(rates);
+            renderCostMatrixTable();
+        });
+    }
+
     window.renderCostEstimation = function () {
         ingredients = getIngredients();
         costMatrix = getCostMatrix();
+        
+        // Sync target rates inputs value
+        const rates = getCostRates();
+        const rateDrinksEl = document.getElementById('cost-rate-drinks');
+        if (rateDrinksEl) rateDrinksEl.value = rates.drinks;
+        const rateFoodEl = document.getElementById('cost-rate-food');
+        if (rateFoodEl) rateFoodEl.value = rates.food;
+        
         renderIngredientsEditor();
         renderCostMatrixTable();
     };
