@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>員工登入 - 毛孩窩管理系統</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #F4A261;
+            --primary-hover: #E76F51;
+            --bg: #FDF9F1;
+            --dark-green: #10352b;
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --text: #2A1A12;
+            --text-muted: #6B5B53;
+            --danger: #E63946;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(244, 162, 97, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(16, 53, 43, 0.08) 0%, transparent 50%);
+        }
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+        }
+        .login-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(244, 162, 97, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-logo .logo-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 8px 24px rgba(244, 162, 97, 0.4);
+        }
+        .login-logo h1 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--dark-green);
+            margin-bottom: 0.25rem;
+        }
+        .login-logo p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            color: var(--text);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(244, 162, 97, 0.15);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 0.95rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 16px rgba(244, 162, 97, 0.35);
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(244, 162, 97, 0.45);
+        }
+        .login-btn:active { transform: translateY(0); }
+        .error-msg {
+            background: #fff0f0;
+            border: 1px solid #fcc;
+            color: var(--danger);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: none;
+            text-align: center;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+        .role-hint {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            margin-top: 1.25rem;
+            font-size: 0.82rem;
+            color: #166534;
+        }
+        .role-hint strong { display: block; margin-bottom: 0.3rem; }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="logo-icon">🐾</div>
+                <h1 id="shop-name-display">毛孩窩</h1>
+                <p>寵物門店管理系統 — 員工登入</p>
+            </div>
+
+            <div class="error-msg" id="error-msg">⚠️ 帳號或密碼錯誤，請再試一次</div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">帳號</label>
+                    <input type="text" id="login-username" placeholder="請輸入員工帳號" autocomplete="username" autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密碼</label>
+                    <input type="password" id="login-password" placeholder="請輸入登入密碼" autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn">🔓 登入後台</button>
+            </form>
+
+            <div class="role-hint">
+                <strong>📋 預設管理員帳號</strong>
+                帳號：<code>admin</code> &nbsp;|&nbsp; 密碼：<code>123</code>
+            </div>
+        </div>
+        <div class="login-footer">
+            &copy; 2026 毛孩窩管理系統 v1.1.12
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script>
+        // Init shop name
+        const settings = getSettings();
+        document.getElementById('shop-name-display').textContent = settings.shopName || '毛孩窩';
+
+        // If already logged in, redirect
+        const existing = sessionStorage.getItem('petCafeCurrentUser');
+        if (existing) {
+            window.location.href = 'admin.html';
+        }
+
+        const form = document.getElementById('login-form');
+        const errorMsg = document.getElementById('error-msg');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            if (!username || !password) {
+                errorMsg.textContent = '⚠️ 請輸入帳號和密碼';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            const employees = getEmployees();
+            const user = employees.find(emp =>
+                emp.username.toLowerCase() === username.toLowerCase() &&
+                emp.password === password &&
+                emp.status === 'active'
+            );
+
+            if (user) {
+                sessionStorage.setItem('petCafeCurrentUser', JSON.stringify({
+                    name: user.name,
+                    username: user.username,
+                    role: user.role
+                }));
+                window.location.href = 'admin.html';
+            } else {
+                errorMsg.textContent = '⚠️ 帳號或密碼錯誤，或帳號已停用';
+                errorMsg.style.display = 'block';
+                document.getElementById('login-password').value = '';
+                document.getElementById('login-password').focus();
+            }
+        });
+    </script>
+</body>
+</html>

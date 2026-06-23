@@ -271,6 +271,8 @@
             ['servedOrders',    'petCafeServedOrders'],
             ['orders',          'petCafeOrders'],
             ['settings',        'petCafeSettings'],
+            ['employees',       'petCafeEmployees'],
+            ['attendanceLogs',  'petCafeAttendanceLogs']
         ];
 
         await Promise.all(keys.map(([fbKey, lsKey]) => syncRead(fbKey, lsKey)));

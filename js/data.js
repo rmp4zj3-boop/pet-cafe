@@ -288,3 +288,42 @@ function saveSettings(settings) {
 function getCategoryInfo(categoryId) {
     return CATEGORIES.find(c => c.id === categoryId) || { id: categoryId, label: categoryId, icon: '🍴', hasSetMeal: false };
 }
+
+// ===== EMPLOYEES =====
+const DEFAULT_EMPLOYEES = [
+    { name: '管理員', role: 'admin', username: 'admin', password: '123', status: 'active' }
+];
+
+function getEmployees() {
+    const saved = localStorage.getItem('petCafeEmployees');
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem('petCafeEmployees', JSON.stringify(DEFAULT_EMPLOYEES));
+    return DEFAULT_EMPLOYEES;
+}
+
+function saveEmployees(list) {
+    localStorage.setItem('petCafeEmployees', JSON.stringify(list));
+    if (window.PetCafeSync) window.PetCafeSync.syncWrite('employees', list, 'petCafeEmployees');
+}
+
+// ===== ATTENDANCE LOGS =====
+function getAttendanceLogs() {
+    const saved = localStorage.getItem('petCafeAttendanceLogs');
+    return saved ? JSON.parse(saved) : [];
+}
+
+function saveAttendanceLogs(list) {
+    localStorage.setItem('petCafeAttendanceLogs', JSON.stringify(list));
+    if (window.PetCafeSync) window.PetCafeSync.syncWrite('attendanceLogs', list, 'petCafeAttendanceLogs');
+}
+
+// ===== HOURLY RATES (for monthly salary calculation) =====
+// Stored as { username: hourlyRate }, e.g. { "admin": 200, "emp01": 180 }
+function getHourlyRates() {
+    const saved = localStorage.getItem('petCafeHourlyRates');
+    return saved ? JSON.parse(saved) : {};
+}
+
+function saveHourlyRates(rates) {
+    localStorage.setItem('petCafeHourlyRates', JSON.stringify(rates));
+}

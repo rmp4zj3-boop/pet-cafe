@@ -11,30 +11,105 @@
     <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 </head>
 
-<body>
-    <header>
-        <a href="admin.html" class="logo">🐾 <span class="shop-name-display">毛孩窩</span> 後台管理</a>
-        <nav>
-            <ul>
-                <li><a href="index.html">返回前台</a></li>
-            </ul>
-        </nav>
-    </header>
+<body class="admin-page">
+    <!-- Mobile Sticky Header -->
+    <div class="mobile-header no-print">
+        <button class="hamburger-btn" id="mobile-hamburger-btn" aria-label="打開選單">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+        </button>
+        <div class="mobile-brand">
+            🐾 <span class="shop-name-display">毛孩窩</span> 後台管理
+        </div>
+        <a href="index.html" class="mobile-exit-btn" title="返回前台">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </a>
+    </div>
 
-    <main>
-        <div class="admin-container">
+    <!-- Sidebar Backdrop for Mobile -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-            <!-- Tabs -->
-            <div class="tabs">
-                <button class="tab-btn active" data-target="menu-tab">🍽️ 菜單管理</button>
-                <button class="tab-btn" data-target="pos-tab">💳 POS 結帳</button>
-                <button class="tab-btn" data-target="kitchen-tab">🔔 出餐點單</button>
-                <button class="tab-btn" data-target="settlement-tab">📝 當日結算</button>
-                <button class="tab-btn" data-target="revenue-tab">📊 實際營收</button>
-                <button class="tab-btn" data-target="projection-tab">📈 營運預測</button>
-                <button class="tab-btn" data-target="cost-tab">💰 成本估算</button>
-                <button class="tab-btn" data-target="settings-tab">⚙️ 基本設定</button>
+    <!-- Sidebar Wrapper -->
+    <div class="sidebar-wrapper no-print" id="sidebar-wrapper">
+        <div class="sidebar-brand">
+            <div class="brand-logo">RM</div>
+            <div class="brand-info">
+                <div class="brand-name"><span class="shop-name-display">毛孩窩</span></div>
+                <div class="brand-sub">寵物門店管理系統</div>
+                <div class="brand-version">v1.1.12</div>
             </div>
+            <div class="brand-badge-row">
+                <span class="brand-badge" id="current-user-badge">員工</span>
+            </div>
+            <div style="grid-column:1/-1; font-size:0.8rem; color:rgba(255,255,255,0.7); margin-top:0.25rem;" id="current-user-name">請登入</div>
+            <div class="sidebar-actions">
+                <button class="sidebar-action-btn close-btn" id="sidebar-close-btn" title="關閉選單">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <button class="sidebar-action-btn" id="btn-logout" title="登出" style="background:rgba(255,80,80,0.18);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                </button>
+                <a href="index.html" class="sidebar-action-btn exit-btn" title="返回前台">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="tabs sidebar-menu">
+            <button class="tab-btn" data-target="revenue-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                <span>營收統計</span>
+            </button>
+            <button class="tab-btn active" data-target="menu-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                <span>菜單管理</span>
+            </button>
+            <button class="tab-btn" data-target="pos-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                <span>POS系統</span>
+            </button>
+            <button class="tab-btn" data-target="kitchen-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span>出餐點單</span>
+            </button>
+            <button class="tab-btn" data-target="settlement-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>
+                <span>當日結算表</span>
+            </button>
+            <button class="tab-btn" data-target="clockin-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>員工打卡</span>
+            </button>
+            <button class="tab-btn" data-target="employee-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>員工資料</span>
+            </button>
+            <button class="tab-btn" data-target="permission-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span>權限系統</span>
+            </button>
+            <button class="tab-btn" data-target="projection-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                <span>營運預測</span>
+            </button>
+            <button class="tab-btn" data-target="cost-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                <span>成本估算</span>
+            </button>
+            <button class="tab-btn" data-target="settings-tab">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span>基本設定</span>
+            </button>
+            <a href="index.html" class="tab-link-btn">
+                <svg class="menu-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                <span>公開首頁</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content Layout wrapper -->
+    <div class="layout-main-content">
+        <main>
+            <div class="admin-container">
 
             <!-- ===== MENU MANAGEMENT TAB ===== -->
             <div id="menu-tab" class="tab-content active">
@@ -766,6 +841,233 @@
                         </div>
                     </div>
                 </div>
+            </div><!-- /cost-tab -->
+
+            <!-- ===== EMPLOYEE CLOCK-IN TAB ===== -->
+            <div id="clockin-tab" class="tab-content">
+                <div class="admin-header">
+                    <h2>⏰ 員工打卡系統</h2>
+                </div>
+                <div class="grid-responsive-2col" style="margin-bottom: 2rem;">
+                    <!-- Clock Panel -->
+                    <div style="background:#fff; padding:2rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow); text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height: 250px;">
+                        <div style="font-size:1.1rem; color:#666; font-weight:600; margin-bottom:0.5rem;" id="clock-date">2026年06月22日</div>
+                        <div style="font-size:3rem; font-weight:800; color:#10352b; margin-bottom:1.5rem; font-family:monospace;" id="clock-time">22:07:23</div>
+                        <div class="form-group" style="width:100%; max-width:280px; text-align:left; margin-bottom:1.5rem;">
+                            <label style="font-weight:bold; margin-bottom:0.5rem; display:block;">👤 選擇員工姓名：</label>
+                            <select id="clockin-employee-select" class="form-control" style="width:100%; padding:0.6rem; border-radius:8px;">
+                                <!-- Dynamic options -->
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:1rem; width:100%; max-width:280px;">
+                            <button class="btn btn-success" id="btn-clockin" style="flex:1; padding:0.75rem; font-size:1rem; font-weight:bold; background:#2e7d32; border-color:#2e7d32;">
+                                上班打卡 💼
+                            </button>
+                            <button class="btn btn-danger" id="btn-clockout" style="flex:1; padding:0.75rem; font-size:1rem; font-weight:bold; background:#c62828; border-color:#c62828;">
+                                下班打卡 🚪
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Today's Attendance Summary -->
+                    <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow); display:flex; flex-direction:column;">
+                        <h3 style="margin-bottom:1rem; border-bottom:2px solid #eee; padding-bottom:0.5rem; color:#10352b;">📋 今日打卡概況</h3>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                            <div style="background:#f4f6f8; padding:1rem; border-radius:8px; text-align:center;">
+                                <div style="font-size:0.85rem; color:#666;">已上班人數</div>
+                                <div style="font-size:1.8rem; font-weight:bold; color:#2e7d32;" id="clockin-today-active">0 人</div>
+                            </div>
+                            <div style="background:#f4f6f8; padding:1rem; border-radius:8px; text-align:center;">
+                                <div style="font-size:0.85rem; color:#666;">今日總工時</div>
+                                <div style="font-size:1.8rem; font-weight:bold; color:#10352b;" id="clockin-today-hours">0 小時</div>
+                            </div>
+                        </div>
+                        <p style="font-size:0.85rem; color:#888;">提示：此概況僅顯示今日有效的打卡記錄與累計工時。</p>
+                    </div>
+                </div>
+
+                <!-- History Logs -->
+                <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow);">
+                    <h3 style="margin-bottom:1rem; color:#10352b;">📅 打卡歷史紀錄</h3>
+                    <div class="table-responsive">
+                        <table style="width:100%; text-align:left; border-collapse:collapse;">
+                            <thead>
+                                <tr style="border-bottom:2px solid #eee; background:#f4f6f8;">
+                                    <th style="padding:0.75rem;">員工姓名</th>
+                                    <th style="padding:0.75rem;">打卡日期</th>
+                                    <th style="padding:0.75rem;">上班時間</th>
+                                    <th style="padding:0.75rem;">下班時間</th>
+                                    <th style="padding:0.75rem;">累計工時</th>
+                                    <th style="padding:0.75rem;">狀態</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clockin-logs-body">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== EMPLOYEE DATA TAB ===== -->
+            <div id="employee-tab" class="tab-content">
+                <div class="admin-header">
+                    <h2>👤 員工基本資料管理</h2>
+                </div>
+                
+                <div class="grid-sidebar-responsive" style="align-items: start; margin-bottom: 2rem;">
+                    <!-- Add / Edit Employee Form -->
+                    <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow);">
+                        <h3 style="margin-bottom:1.25rem; color:#10352b; border-bottom:2px solid #eee; padding-bottom:0.5rem;" id="employee-form-title">➕ 增加員工資料</h3>
+                        <form id="employee-form">
+                            <input type="hidden" id="employee-idx">
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">員工姓名 <span style="color:red;">*</span></label>
+                                <input type="text" id="employee-name" class="form-control" placeholder="例：王小明" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">電話號碼</label>
+                                <input type="tel" id="employee-phone" class="form-control" placeholder="例：0912345678">
+                            </div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">生日</label>
+                                <input type="date" id="employee-birthday" class="form-control">
+                            </div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">基本時薪 <span style="color:red;">*</span></label>
+                                <input type="number" id="employee-hourly-rate" class="form-control" placeholder="例：180" min="0" value="180" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">職位角色</label>
+                                <select id="employee-role" class="form-control">
+                                    <option value="admin">管理員 (Admin)</option>
+                                    <option value="staff">助理 (Staff)</option>
+                                    <option value="kitchen">出餐人員 (Kitchen)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:1rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">帳號/代碼 <span style="color:red;">*</span></label>
+                                <input type="text" id="employee-username" class="form-control" placeholder="例：emp01" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:1.25rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">登入密碼 <span style="color:red;">*</span></label>
+                                <input type="password" id="employee-password" class="form-control" placeholder="請設定登入密碼" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:1.25rem;">
+                                <label style="font-weight:600; display:block; margin-bottom:0.4rem;">帳號狀態</label>
+                                <select id="employee-status" class="form-control">
+                                    <option value="active">啟用 (在職)</option>
+                                    <option value="inactive">停用 (離職)</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button type="submit" class="btn btn-primary" style="flex:1;">💾 儲存員工</button>
+                                <button type="button" class="btn" id="btn-cancel-employee" style="background:#e0e0e0; display:none;">取消修改</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Employee List Table -->
+                    <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow);">
+                        <h3 style="margin-bottom:1.25rem; color:#10352b; border-bottom:2px solid #eee; padding-bottom:0.5rem;">👥 員工基本資料列表</h3>
+                        <div class="table-responsive">
+                            <table style="width:100%; text-align:left; border-collapse:collapse; font-size:0.92rem;">
+                                <thead>
+                                    <tr style="border-bottom:2px solid #eee; background:#f4f6f8;">
+                                        <th style="padding:0.75rem;">姓名</th>
+                                        <th style="padding:0.75rem;">電話</th>
+                                        <th style="padding:0.75rem;">生日</th>
+                                        <th style="padding:0.75rem; text-align:center;">基本時薪</th>
+                                        <th style="padding:0.75rem;">角色</th>
+                                        <th style="padding:0.75rem;">狀態</th>
+                                        <th style="padding:0.75rem; text-align:center;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employees-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PERMISSION SYSTEM TAB ===== -->
+            <div id="permission-tab" class="tab-content">
+                <div class="admin-header">
+                    <h2>🔑 權限管理系統</h2>
+                </div>
+                
+                <!-- Role Page Permissions Config Form -->
+                <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow); margin-bottom:2rem;">
+                    <h3 style="margin-bottom:1.25rem; color:#10352b; border-bottom:2px solid #eee; padding-bottom:0.5rem;">🔑 頁面瀏覽權限設定</h3>
+                    <form id="role-permissions-form">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
+                            <!-- Admin Card -->
+                            <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:12px; padding:1.25rem;">
+                                <h4 style="font-size:1.05rem; font-weight:700; color:#10352b; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                                    🛠️ 管理員 (Admin)
+                                </h4>
+                                <div style="display:flex; flex-direction:column; gap:0.5rem;" class="role-permission-checkboxes" data-role="admin">
+                                    <!-- Dynamically populated -->
+                                </div>
+                            </div>
+                            
+                            <!-- Staff Card -->
+                            <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:12px; padding:1.25rem;">
+                                <h4 style="font-size:1.05rem; font-weight:700; color:#e67e22; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                                    📋 助理 (Staff)
+                                </h4>
+                                <div style="display:flex; flex-direction:column; gap:0.5rem;" class="role-permission-checkboxes" data-role="staff">
+                                    <!-- Dynamically populated -->
+                                </div>
+                            </div>
+                            
+                            <!-- Kitchen Card -->
+                            <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:12px; padding:1.25rem;">
+                                <h4 style="font-size:1.05rem; font-weight:700; color:#27ae60; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                                    🍳 出餐人員 (Kitchen)
+                                </h4>
+                                <div style="display:flex; flex-direction:column; gap:0.5rem;" class="role-permission-checkboxes" data-role="kitchen">
+                                    <!-- Dynamically populated -->
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="background:#10352b; border-color:#10352b;">💾 儲存權限設定</button>
+                    </form>
+                </div>
+
+                <!-- Monthly Salary Report Section -->
+                <div style="background:#fff; padding:1.5rem; border-radius:12px; border:1px solid #ddd; box-shadow:var(--shadow); margin-top:2rem;">
+                    <h3 style="margin-bottom:1rem; color:#10352b; border-bottom:2px solid #eee; padding-bottom:0.5rem;">📊 月薪報表與工時統計</h3>
+                    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem;">
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-weight:600; display:block; margin-bottom:0.3rem; font-size:0.88rem;">選擇月份</label>
+                            <input type="month" id="salary-month-select" class="form-control" style="width:170px; padding:0.4rem;">
+                        </div>
+                        <button class="btn btn-primary" id="btn-generate-salary" style="margin-top:1.3rem; background:#10352b; border-color:#10352b;">🔍 產生報表</button>
+                        <button class="btn btn-success" id="btn-export-salary-csv" style="margin-top:1.3rem; display:none;">↓ 匯出 CSV</button>
+                    </div>
+                    <div id="salary-report-container" style="display:none;">
+                        <div class="table-responsive">
+                            <table id="salary-report-table" style="width:100%; border-collapse:collapse; font-size:0.92rem;">
+                                <thead>
+                                    <tr style="background:#10352b; color:white;">
+                                        <th style="padding:0.75rem; text-align:left;">員工姓名</th>
+                                        <th style="padding:0.75rem; text-align:left;">帳號</th>
+                                        <th style="padding:0.75rem; text-align:left;">職位</th>
+                                        <th style="padding:0.75rem; text-align:center;">工作天數</th>
+                                        <th style="padding:0.75rem; text-align:center;">總工時（小時）</th>
+                                        <th style="padding:0.75rem; text-align:center;">時薪 (NT$/hr)</th>
+                                        <th style="padding:0.75rem; text-align:right;">月薪估算 (NT$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="salary-report-body"></tbody>
+                                <tfoot id="salary-report-foot"></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div><!-- /admin-container -->
@@ -836,6 +1138,7 @@
         </div>
 
     </main>
+    </div>
 
     <script src="js/firebase-sync.js"></script>
     <script src="js/data.js"></script>

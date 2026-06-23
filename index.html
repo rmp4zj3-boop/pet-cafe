@@ -12,48 +12,37 @@
 </head>
 <body>
 
-    <!-- Welcome Table Entry Modal -->
-    <div class="modal-overlay" id="table-entry-modal" style="display:flex; justify-content:center; align-items:center; z-index:9999;">
-        <div class="modal-content" style="max-width:400px; text-align:center; padding:2rem; border-radius:16px;">
-            <div style="font-size:3rem; margin-bottom:1rem;">🐾</div>
-            <h3 style="font-size:1.4rem; margin-bottom:1rem; color:#d84315;">歡迎來到 <span class="shop-name-display">毛孩窩</span></h3>
-            <p style="color:var(--text-muted); margin-bottom:1.5rem; font-size:0.95rem;">為了提供更好的點餐服務，請先填寫您的用餐資訊：</p>
-            <form id="table-entry-form" style="display:flex; flex-direction:column; gap:1rem; text-align:left;">
-                <div>
-                    <label style="font-weight:600; display:block; margin-bottom:0.4rem; font-size:0.9rem;">🪑 桌號</label>
-                    <input type="text" id="entry-table-number" class="form-control" placeholder="例如：A1" required style="width:100%; box-sizing:border-box; padding:0.6rem; border:1.5px solid #ddd; border-radius:8px;">
-                </div>
-                <div>
-                    <label style="font-weight:600; display:block; margin-bottom:0.4rem; font-size:0.9rem;">👥 用餐人數</label>
-                    <input type="number" id="entry-guests" class="form-control" min="1" max="20" value="2" required style="width:100%; box-sizing:border-box; padding:0.6rem; border:1.5px solid #ddd; border-radius:8px;">
-                </div>
-                <button type="submit" class="btn btn-primary" style="width:100%; padding:0.75rem; font-size:1rem; font-weight:bold; margin-top:0.5rem; background:#d84315; border-color:#d84315;">
-                    開始點餐 🐾
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Header -->
-    <header>
+    <!-- Top Header: Row 1 = Logo + Cart -->
+    <header id="top-header">
         <a href="#" class="logo">🐾 <span class="shop-name-display">毛孩窩</span></a>
         <button class="cart-btn" id="open-cart-btn">
             🛒 購物車 <span id="cart-count">0</span>
         </button>
     </header>
 
-    <!-- Table Number Banner -->
-    <div class="table-banner" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-        <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
-            <span>🪑 桌號：<strong id="display-table-number" style="font-size:1.15rem; color:#e65100;">-</strong></span>
-            <span>👥 用餐人數：<strong id="display-guests" style="font-size:1.15rem; color:#e65100;">-</strong> 人</span>
+    <!-- Top Header: Row 2 = Table Info Bar -->
+    <div id="table-bar">
+        <!-- Display mode -->
+        <div class="header-table-info" id="table-info-display" style="display:none;">
+            <span class="table-info-item">🪑 桌號：<strong id="display-table-num">-</strong></span>
+            <span class="table-info-sep">|</span>
+            <span class="table-info-item">👥 人數：<strong id="display-guests">-</strong> 人</span>
+            <button class="table-edit-btn" id="table-edit-btn">修改資訊</button>
         </div>
-        <button type="button" class="btn" id="change-table-btn" style="background:#e0e0e0; padding:0.3rem 0.75rem; font-size:0.85rem; border-radius:6px; font-weight:600;">修改資訊</button>
+        <!-- Edit mode -->
+        <div class="header-table-edit" id="table-info-edit">
+            <span style="font-size:0.9rem;font-weight:600;">🪑 桌號：</span>
+            <input type="text" id="table-number-input" class="table-number-input" placeholder="請輸入桌號" maxlength="6">
+            <span style="font-size:0.9rem;font-weight:600;">👥 人數：</span>
+            <input type="number" id="guests-number-input" class="table-number-input" placeholder="人數" min="1" max="20" value="1" style="width:65px;">
+            <button class="table-confirm-btn" id="table-confirm-btn">✓ 確認</button>
+            <span id="table-hint" style="font-size:0.82rem;color:#e65100;display:none;">⚠️ 請先輸入桌號再結帳</span>
+        </div>
     </div>
 
-    <!-- Main Content -->
+    <!-- Main Content (below header) -->
     <main>
-        <h1 style="font-size:2rem; margin-bottom:1.25rem;">
+        <h1 style="font-size:1.75rem; font-weight:800; margin-bottom:1.25rem; color:var(--text-main);">
             <span class="shop-name-display">毛孩窩</span> 點餐菜單
         </h1>
 
@@ -167,7 +156,6 @@
         </div>
     </div>
 
-    <script src="js/firebase-sync.js"></script>
     <script src="js/data.js"></script>
     <script src="js/main.js"></script>
 </body>

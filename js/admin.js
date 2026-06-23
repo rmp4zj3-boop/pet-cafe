@@ -1,4 +1,120 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ===== LOGIN VERIFICATION & ROLE PERMISSIONS =====
+    const ALL_TABS = [
+        { id: 'revenue-tab', label: '📊 營收統計' },
+        { id: 'menu-tab', label: '📖 菜單管理' },
+        { id: 'pos-tab', label: '🖥️ POS系統' },
+        { id: 'kitchen-tab', label: '🍳 出餐點單' },
+        { id: 'settlement-tab', label: '📝 當日結算表' },
+        { id: 'clockin-tab', label: '⏰ 員工打卡' },
+        { id: 'employee-tab', label: '👤 員工資料' },
+        { id: 'permission-tab', label: '🔑 權限系統' },
+        { id: 'projection-tab', label: '📈 營運預測' },
+        { id: 'cost-tab', label: '💰 成本估算' },
+        { id: 'settings-tab', label: '⚙️ 基本設定' }
+    ];
+
+    const DEFAULT_ROLE_PERMISSIONS = {
+        admin:   ['revenue-tab', 'menu-tab', 'pos-tab', 'kitchen-tab', 'settlement-tab', 'clockin-tab', 'employee-tab', 'permission-tab', 'projection-tab', 'cost-tab', 'settings-tab'],
+        staff:   ['pos-tab', 'kitchen-tab', 'settlement-tab', 'clockin-tab'],
+        kitchen: ['kitchen-tab', 'clockin-tab']
+    };
+
+    window.getRolePermissions = function() {
+        const saved = localStorage.getItem('petCafeRolePermissions');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                return DEFAULT_ROLE_PERMISSIONS;
+            }
+        }
+        return DEFAULT_ROLE_PERMISSIONS;
+    };
+
+    window.saveRolePermissions = function(perms) {
+        localStorage.setItem('petCafeRolePermissions', JSON.stringify(perms));
+    };
+
+    const ROLE_LABELS = { admin: '管理員', staff: '助理', kitchen: '出餐人員' };
+
+    let currentUser = null;
+    try {
+        const stored = sessionStorage.getItem('petCafeCurrentUser');
+        if (stored) currentUser = JSON.parse(stored);
+    } catch(e) { currentUser = null; }
+
+    if (!currentUser) {
+        // Not logged in — redirect to login page
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Update sidebar user info
+    const badgeEl = document.getElementById('current-user-badge');
+    const nameEl = document.getElementById('current-user-name');
+    if (badgeEl) badgeEl.textContent = ROLE_LABELS[currentUser.role] || currentUser.role;
+    if (nameEl) nameEl.textContent = `👤 ${currentUser.name}（${currentUser.username}）`;
+
+    // Apply role-based tab visibility
+
+
+    window.applySidebarTabVisibility = function() {
+        const rolePermissions = getRolePermissions();
+        const allowedTabs = rolePermissions[currentUser.role] || ['kitchen-tab', 'clockin-tab'];
+        
+        document.querySelectorAll('.tabs .tab-btn[data-target]').forEach(btn => {
+            const target = btn.dataset.target;
+            if (!allowedTabs.includes(target)) {
+                btn.style.setProperty('display', 'none', 'important');
+            } else {
+                btn.style.removeProperty('display');
+            }
+        });
+        
+        // If active tab is hidden, switch to first visible tab
+        const activeBtn = document.querySelector('.tabs .tab-btn.active');
+        if (activeBtn && activeBtn.style.display === 'none') {
+            let newActiveTab = '';
+            const allBtns = document.querySelectorAll('.tabs .tab-btn');
+            for (let btn of allBtns) {
+                if (btn.style.display !== 'none' && btn.dataset.target) {
+                    newActiveTab = btn.dataset.target;
+                    break;
+                }
+            }
+            if (newActiveTab) {
+                const targetBtn = document.querySelector(`.tabs .tab-btn[data-target="${newActiveTab}"]`);
+                if (targetBtn) targetBtn.click();
+            }
+        }
+    };
+
+    applySidebarTabVisibility();
+
+    // Activate default tab initially
+    const rolePermissions = getRolePermissions();
+    const allowedTabs = rolePermissions[currentUser.role] || ['kitchen-tab', 'clockin-tab'];
+    let defaultTab = '';
+    const initialBtns = document.querySelectorAll('.tabs .tab-btn[data-target]');
+    for (let btn of initialBtns) {
+        const target = btn.dataset.target;
+        if (allowedTabs.includes(target)) {
+            defaultTab = target;
+            break;
+        }
+    }
+    if (!defaultTab) defaultTab = 'kitchen-tab';
+
+    const allTabBtns = document.querySelectorAll('.tabs .tab-btn');
+    const allTabContents = document.querySelectorAll('.tab-content');
+    allTabBtns.forEach(b => b.classList.remove('active'));
+    allTabContents.forEach(c => c.classList.remove('active'));
+    const defaultBtn = document.querySelector(`.tabs .tab-btn[data-target="${defaultTab}"]`);
+    if (defaultBtn) defaultBtn.classList.add('active');
+    const defaultContent = document.getElementById(defaultTab);
+    if (defaultContent) defaultContent.classList.add('active');
+
     function getLocalDateStr(dateStr) {
         if (!dateStr) return '';
         const d = new Date(dateStr);
@@ -429,6 +545,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderProjections();
             } else if (target === 'cost-tab') {
                 renderCostEstimation();
+            } else if (target === 'clockin-tab') {
+                renderClockIn();
+            } else if (target === 'employee-tab') {
+                renderPermission();
+            } else if (target === 'permission-tab') {
+                renderRolePermissionsUI();
+                if (btnGenerateSalary) btnGenerateSalary.click();
             } else if (target === 'settings-tab') {
                 document.getElementById('setting-shop-name').value = getSettings().shopName;
             }
@@ -2976,6 +3099,580 @@ document.addEventListener('DOMContentLoaded', () => {
                 showFirebaseMsg('ℹ️ 已清除設定，目前使用本機模式。', '#6b7280');
                 updateFirebaseBadge();
             }
+        });
+    }
+
+    // ===== EMPLOYEE CLOCK-IN SYSTEM =====
+    let clockInterval = null;
+    function startDigitalClock() {
+        if (clockInterval) clearInterval(clockInterval);
+        
+        const dateEl = document.getElementById('clock-date');
+        const timeEl = document.getElementById('clock-time');
+        
+        function updateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            
+            const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const dayName = days[now.getDay()];
+            
+            if (dateEl) {
+                dateEl.textContent = `${year}年${month}月${date}日 ${dayName}`;
+            }
+            if (timeEl) {
+                timeEl.textContent = now.toLocaleTimeString('zh-TW', { hour12: false });
+            }
+        }
+        
+        updateTime();
+        clockInterval = setInterval(updateTime, 1000);
+    }
+
+    window.renderClockIn = function() {
+        startDigitalClock();
+        
+        const empSelect = document.getElementById('clockin-employee-select');
+        const todayActiveEl = document.getElementById('clockin-today-active');
+        const todayHoursEl = document.getElementById('clockin-today-hours');
+        const logsBody = document.getElementById('clockin-logs-body');
+        
+        if (!empSelect || !logsBody) return;
+        
+        // 1. Populate active employees select
+        const employeesList = getEmployees();
+        const activeEmployees = employeesList.filter(e => e.status === 'active');
+        
+        empSelect.innerHTML = activeEmployees.map(e => `
+            <option value="${e.name}">${e.name} (${getRoleLabel(e.role)})</option>
+        `).join('');
+        
+        if (activeEmployees.length === 0) {
+            empSelect.innerHTML = `<option value="">(尚無在職員工)</option>`;
+        }
+        
+        // 2. Fetch attendance logs and filter for today
+        const logs = getAttendanceLogs();
+        const todayStr = getLocalDateStr(new Date());
+        
+        // Active employees working today (checked in but not checked out)
+        const workingToday = logs.filter(log => log.date === todayStr && log.status === 'active');
+        todayActiveEl.textContent = `${workingToday.length} 人`;
+        
+        // Today's total work hours
+        let totalHours = 0;
+        logs.filter(log => log.date === todayStr).forEach(log => {
+            totalHours += Number(log.hours) || 0;
+        });
+        todayHoursEl.textContent = `${totalHours.toFixed(1)} 小時`;
+        
+        // 3. Render logs list (newest first)
+        const sortedLogs = [...logs].reverse();
+        logsBody.innerHTML = sortedLogs.map((log, idx) => {
+            const index = logs.length - 1 - idx; // true original index
+            const clockOutText = log.clockOut || '-';
+            const statusBadge = log.status === 'active' 
+                ? '<span style="background:#fff3cd; color:#856404; padding:2px 6px; border-radius:4px; font-size:0.75rem;">工作中</span>'
+                : '<span style="background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-size:0.75rem;">已下班</span>';
+                
+            return `
+                <tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:0.75rem;"><strong>${log.name}</strong></td>
+                    <td style="padding:0.75rem;">${log.date}</td>
+                    <td style="padding:0.75rem; color:#2e7d32; font-weight:600;">${log.clockIn}</td>
+                    <td style="padding:0.75rem; color:${log.clockOut ? '#c62828' : '#888'}; font-weight:600;">${clockOutText}</td>
+                    <td style="padding:0.75rem; font-weight:bold;">${Number(log.hours).toFixed(1)} hrs</td>
+                    <td style="padding:0.75rem;">${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        if (sortedLogs.length === 0) {
+            logsBody.innerHTML = `<tr><td colspan="6" style="padding:2rem; text-align:center; color:#888;">目前尚無打卡紀錄</td></tr>`;
+        }
+    };
+
+    function getRoleLabel(role) {
+        switch (role) {
+            case 'admin': return '管理員';
+            case 'staff': return '助理';
+            case 'kitchen': return '出餐人員';
+            default: return role;
+        }
+    }
+
+    // Bind clock-in / out buttons
+    const btnClockIn = document.getElementById('btn-clockin');
+    const btnClockOut = document.getElementById('btn-clockout');
+    
+    if (btnClockIn) {
+        btnClockIn.addEventListener('click', () => {
+            const empSelect = document.getElementById('clockin-employee-select');
+            const name = empSelect.value;
+            if (!name) {
+                alert('請先選擇員工姓名！');
+                return;
+            }
+            
+            const logs = getAttendanceLogs();
+            const todayStr = getLocalDateStr(new Date());
+            
+            // Check if already clocked in and not clocked out
+            const activeLog = logs.find(log => log.name === name && log.date === todayStr && log.status === 'active');
+            if (activeLog) {
+                alert(`「${name}」今天已經打卡上班，目前在職中，不需重複打卡！`);
+                return;
+            }
+            
+            const timeStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            logs.push({
+                name: name,
+                date: todayStr,
+                clockIn: timeStr,
+                clockOut: '',
+                hours: 0,
+                status: 'active'
+            });
+            
+            saveAttendanceLogs(logs);
+            alert(`🎉「${name}」於 ${timeStr} 上班打卡成功！`);
+            renderClockIn();
+        });
+    }
+    
+    if (btnClockOut) {
+        btnClockOut.addEventListener('click', () => {
+            const empSelect = document.getElementById('clockin-employee-select');
+            const name = empSelect.value;
+            if (!name) {
+                alert('請先選擇員工姓名！');
+                return;
+            }
+            
+            const logs = getAttendanceLogs();
+            const todayStr = getLocalDateStr(new Date());
+            
+            // Find active log for today
+            const activeLog = logs.find(log => log.name === name && log.date === todayStr && log.status === 'active');
+            if (!activeLog) {
+                alert(`找不到「${name}」今天的上班打卡紀錄！請先打卡上班。`);
+                return;
+            }
+            
+            const timeStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+            
+            // Calculate hours
+            const [inH, inM, inS] = activeLog.clockIn.split(':').map(Number);
+            const [outH, outM, outS] = timeStr.split(':').map(Number);
+            const inSec = inH * 3600 + inM * 60 + inS;
+            const outSec = outH * 3600 + outM * 60 + outS;
+            
+            let diffSec = outSec - inSec;
+            if (diffSec < 0) diffSec = 0; // Prevent negative time
+            
+            const hoursDecimal = diffSec / 3600;
+            
+            activeLog.clockOut = timeStr;
+            activeLog.hours = Math.round(hoursDecimal * 10) / 10; // round to 1 decimal place
+            activeLog.status = 'completed';
+            
+            saveAttendanceLogs(logs);
+            alert(`🚪「${name}」於 ${timeStr} 下班打卡成功！今日工時 ${activeLog.hours} 小時。`);
+            renderClockIn();
+        });
+    }
+
+    // ===== EMPLOYEE DATA SYSTEM =====
+    window.renderPermission = function() {
+        const tableBody = document.getElementById('employees-table-body');
+        if (!tableBody) return;
+        
+        const employeesList = getEmployees();
+        
+        tableBody.innerHTML = employeesList.map((emp, idx) => {
+            const roleText = getRoleLabel(emp.role);
+            const statusText = emp.status === 'active' 
+                ? '<span style="color:#2e7d32; font-weight:bold;">在職</span>' 
+                : '<span style="color:#c62828;">離職</span>';
+            const phoneText = emp.phone || '<span style="color:#aaa;">-</span>';
+            const birthdayText = emp.birthday || '<span style="color:#aaa;">-</span>';
+            const rateText = emp.hourlyRate !== undefined ? emp.hourlyRate : 180;
+                
+            return `
+                <tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:0.75rem;"><strong>${emp.name}</strong></td>
+                    <td style="padding:0.75rem;">${phoneText}</td>
+                    <td style="padding:0.75rem;">${birthdayText}</td>
+                    <td style="padding:0.75rem; text-align:center;">NT$ ${rateText}</td>
+                    <td style="padding:0.75rem;">${roleText} (${emp.username})</td>
+                    <td style="padding:0.75rem;">${statusText}</td>
+                    <td style="padding:0.75rem; text-align:center;">
+                        <button class="btn btn-primary emp-edit-btn" data-idx="${idx}" style="padding:0.25rem 0.6rem; font-size:0.8rem; margin-right:0.25rem;">編輯</button>
+                        <button class="btn btn-danger emp-del-btn" data-idx="${idx}" style="padding:0.25rem 0.6rem; font-size:0.8rem;">刪除</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        if (employeesList.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="7" style="padding:2rem; text-align:center; color:#888;">目前尚無員工資料</td></tr>`;
+        }
+
+        // Event delegation — bind after innerHTML is set
+        tableBody.querySelectorAll('.emp-edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => editEmpByIdx(parseInt(btn.dataset.idx, 10)));
+        });
+        tableBody.querySelectorAll('.emp-del-btn').forEach(btn => {
+            btn.addEventListener('click', () => delEmpByIdx(parseInt(btn.dataset.idx, 10)));
+        });
+    };
+
+    function editEmpByIdx(index) {
+        const employeesList = getEmployees();
+        const emp = employeesList[index];
+        if (!emp) return;
+        
+        document.getElementById('employee-idx').value = index;
+        document.getElementById('employee-name').value = emp.name;
+        document.getElementById('employee-phone').value = emp.phone || '';
+        document.getElementById('employee-birthday').value = emp.birthday || '';
+        document.getElementById('employee-hourly-rate').value = emp.hourlyRate !== undefined ? emp.hourlyRate : 180;
+        document.getElementById('employee-role').value = emp.role;
+        document.getElementById('employee-username').value = emp.username;
+        document.getElementById('employee-password').value = emp.password;
+        document.getElementById('employee-status').value = emp.status;
+        
+        document.getElementById('employee-form-title').textContent = '✏️ 編輯員工資料';
+        document.getElementById('btn-cancel-employee').style.display = 'inline-block';
+        
+        const employeeForm = document.getElementById('employee-form');
+        if (employeeForm) {
+            employeeForm.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    // Keep window.editEmployee as alias for backward compatibility
+    window.editEmployee = editEmpByIdx;
+
+    function delEmpByIdx(index) {
+        const employeesList = getEmployees();
+        const emp = employeesList[index];
+        if (!emp) return;
+        
+        if (confirm(`確定要刪除員工「${emp.name}」的帳號嗎？此操作無法復原。`)) {
+            employeesList.splice(index, 1);
+            saveEmployees(employeesList);
+            renderPermission();
+            if (document.getElementById('clockin-tab') && document.getElementById('clockin-tab').classList.contains('active')) {
+                renderClockIn();
+            }
+        }
+    }
+    window.deleteEmployee = delEmpByIdx;
+
+    const employeeForm = document.getElementById('employee-form');
+    const btnCancelEmployee = document.getElementById('btn-cancel-employee');
+    
+    if (employeeForm) {
+        employeeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const idxVal = document.getElementById('employee-idx').value;
+            const name = document.getElementById('employee-name').value.trim();
+            const phone = document.getElementById('employee-phone').value.trim();
+            const birthday = document.getElementById('employee-birthday').value;
+            const hourlyRate = parseInt(document.getElementById('employee-hourly-rate').value, 10) || 180;
+            const role = document.getElementById('employee-role').value;
+            const username = document.getElementById('employee-username').value.trim();
+            const password = document.getElementById('employee-password').value.trim();
+            const status = document.getElementById('employee-status').value;
+            
+            if (!name || !username || !password) {
+                alert('請填寫所有必填欄位 (*)。');
+                return;
+            }
+            
+            const employeesList = getEmployees();
+            
+            // Check for username duplication
+            const dupIdx = employeesList.findIndex((emp, index) => {
+                return emp.username.toLowerCase() === username.toLowerCase() && String(index) !== idxVal;
+            });
+            
+            if (dupIdx !== -1) {
+                alert(`⚠️ 帳號代碼「${username}」已被其他員工「${employeesList[dupIdx].name}」使用，請更換！`);
+                return;
+            }
+            
+            const newEmp = { name, phone, birthday, hourlyRate, role, username, password, status };
+            
+            if (idxVal !== '') {
+                employeesList[Number(idxVal)] = newEmp;
+                alert('員工資料修改成功！');
+            } else {
+                employeesList.push(newEmp);
+                alert('員工資料新增成功！');
+            }
+            
+            saveEmployees(employeesList);
+            resetEmployeeForm();
+            renderPermission();
+        });
+    }
+    
+    if (btnCancelEmployee) {
+        btnCancelEmployee.addEventListener('click', resetEmployeeForm);
+    }
+    
+    function resetEmployeeForm() {
+        if (employeeForm) employeeForm.reset();
+        document.getElementById('employee-idx').value = '';
+        document.getElementById('employee-form-title').textContent = '➕ 增加員工資料';
+        document.getElementById('employee-hourly-rate').value = 180;
+        if (btnCancelEmployee) btnCancelEmployee.style.display = 'none';
+    }
+
+    // ===== SIDEBAR DRAWER TOGGLE LOGIC =====
+    const mobileHamburgerBtn = document.getElementById('mobile-hamburger-btn');
+    const sidebarWrapper = document.getElementById('sidebar-wrapper');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+
+    function closeSidebar() {
+        if (sidebarWrapper) sidebarWrapper.classList.remove('open');
+        if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+    }
+
+    if (mobileHamburgerBtn) {
+        mobileHamburgerBtn.addEventListener('click', () => {
+            if (sidebarWrapper) sidebarWrapper.classList.add('open');
+            if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+        });
+    }
+
+    if (sidebarCloseBtn) {
+        sidebarCloseBtn.addEventListener('click', closeSidebar);
+    }
+
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', closeSidebar);
+    }
+
+    // Auto-close sidebar on mobile when a menu item is clicked
+    const sidebarMenuBtns = document.querySelectorAll('.sidebar-menu .tab-btn');
+    sidebarMenuBtns.forEach(btn => {
+        btn.addEventListener('click', closeSidebar);
+    });
+
+    // ===== LOGOUT BUTTON =====
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            sessionStorage.removeItem('petCafeCurrentUser');
+            window.location.href = 'login.html';
+        });
+    }
+
+    // ===== MONTHLY SALARY REPORT =====
+    const salaryMonthSelect = document.getElementById('salary-month-select');
+    const btnGenerateSalary = document.getElementById('btn-generate-salary');
+    const btnExportSalaryCsv = document.getElementById('btn-export-salary-csv');
+    const salaryReportContainer = document.getElementById('salary-report-container');
+    const salaryReportBody = document.getElementById('salary-report-body');
+    const salaryReportFoot = document.getElementById('salary-report-foot');
+
+    // Set default to current month
+    if (salaryMonthSelect) {
+        const now = new Date();
+        salaryMonthSelect.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getRoleLabel(role) {
+        const map = { admin: '管理員', staff: '助理', kitchen: '出餐人員' };
+        return map[role] || role;
+    }
+
+    let salaryReportData = [];
+
+    if (btnGenerateSalary) {
+        btnGenerateSalary.addEventListener('click', () => {
+            const yearMonth = salaryMonthSelect ? salaryMonthSelect.value : '';
+            if (!yearMonth) { alert('請選擇月份'); return; }
+
+            const employees = getEmployees();
+            const logs = getAttendanceLogs();
+            const rates = getHourlyRates();
+
+            // Filter logs for selected month and completed status
+            const [year, month] = yearMonth.split('-').map(Number);
+            const monthLogs = logs.filter(log => {
+                if (!log.date || log.status !== 'completed') return false;
+                const [y, m] = log.date.split('-').map(Number);
+                return y === year && m === month;
+            });
+
+            // Aggregate by employee name
+            salaryReportData = employees.map(emp => {
+                const empLogs = monthLogs.filter(l => l.employeeName === emp.name);
+                const totalHours = empLogs.reduce((s, l) => s + (l.hours || 0), 0);
+                const workDays = new Set(empLogs.map(l => l.date)).size;
+                const rate = emp.hourlyRate !== undefined ? emp.hourlyRate : (rates[emp.username] || 180);
+                const salary = Math.round(totalHours * rate);
+                return {
+                    name: emp.name,
+                    username: emp.username,
+                    role: emp.role,
+                    workDays,
+                    totalHours: Math.round(totalHours * 10) / 10,
+                    rate,
+                    salary
+                };
+            });
+
+            // Render table
+            if (salaryReportBody) {
+                salaryReportBody.innerHTML = salaryReportData.map(row => `
+                    <tr style="border-bottom:1px solid #eee; ${row.totalHours === 0 ? 'opacity:0.5;' : ''}">
+                        <td style="padding:0.65rem 0.75rem; font-weight:600;">${row.name}</td>
+                        <td style="padding:0.65rem 0.75rem; font-family:monospace; color:#666;">${row.username}</td>
+                        <td style="padding:0.65rem 0.75rem;">${getRoleLabel(row.role)}</td>
+                        <td style="padding:0.65rem 0.75rem; text-align:center;">${row.workDays} 天</td>
+                        <td style="padding:0.65rem 0.75rem; text-align:center; font-weight:bold;">${row.totalHours}</td>
+                        <td style="padding:0.65rem 0.75rem; text-align:center;">
+                            <input type="number" class="salary-rate-inline" data-username="${row.username}" value="${row.rate}" min="0" step="10"
+                                style="width:80px; padding:0.2rem 0.4rem; border:1px solid #ddd; border-radius:5px; text-align:center;">
+                        </td>
+                        <td style="padding:0.65rem 0.75rem; text-align:right; font-weight:800; color:#10352b; font-size:1.05rem;">NT$ ${row.salary.toLocaleString()}</td>
+                    </tr>
+                `).join('');
+
+                // Wire up inline rate changes to recalculate and save
+                document.querySelectorAll('.salary-rate-inline').forEach(inp => {
+                    inp.addEventListener('input', () => {
+                        const username = inp.dataset.username;
+                        const newRate = parseInt(inp.value, 10) || 0;
+                        const row = salaryReportData.find(r => r.username === username);
+                        if (!row) return;
+                        row.rate = newRate;
+                        row.salary = Math.round(row.totalHours * newRate);
+                        const td = inp.closest('tr').querySelector('td:last-child');
+                        if (td) td.textContent = `NT$ ${row.salary.toLocaleString()}`;
+                        updateSalaryFooter();
+
+                        // Save to employee profile
+                        const emps = getEmployees();
+                        const empObj = emps.find(e => e.username === username);
+                        if (empObj) {
+                            empObj.hourlyRate = newRate;
+                            saveEmployees(emps);
+                        }
+
+                        // Also update in hourly rates fallback map
+                        const ratesMap = getHourlyRates();
+                        ratesMap[username] = newRate;
+                        saveHourlyRates(ratesMap);
+                    });
+                });
+            }
+
+            updateSalaryFooter();
+            if (salaryReportContainer) salaryReportContainer.style.display = 'block';
+            if (btnExportSalaryCsv) btnExportSalaryCsv.style.display = 'inline-block';
+        });
+    }
+
+    function updateSalaryFooter() {
+        if (!salaryReportFoot) return;
+        const totalSalary = salaryReportData.reduce((s, r) => s + r.salary, 0);
+        const totalHrs = salaryReportData.reduce((s, r) => s + r.totalHours, 0);
+        salaryReportFoot.innerHTML = `
+            <tr style="background:#f0fdf4; font-weight:800; border-top:2px solid #10352b;">
+                <td colspan="4" style="padding:0.75rem; text-align:right; color:#10352b;">合計</td>
+                <td style="padding:0.75rem; text-align:center; color:#10352b;">${Math.round(totalHrs * 10)/10} 小時</td>
+                <td style="padding:0.75rem;"></td>
+                <td style="padding:0.75rem; text-align:right; color:#10352b; font-size:1.1rem;">NT$ ${totalSalary.toLocaleString()}</td>
+            </tr>
+        `;
+    }
+
+    if (btnExportSalaryCsv) {
+        btnExportSalaryCsv.addEventListener('click', () => {
+            if (!salaryReportData.length) return;
+            const yearMonth = salaryMonthSelect ? salaryMonthSelect.value : 'unknown';
+            const headers = ['員工姓名','帳號','職位','工作天數','總工時(小時)','時薪(NT$/hr)','月薪估算(NT$)'];
+            const rows = salaryReportData.map(r => [
+                r.name, r.username, getRoleLabel(r.role), r.workDays, r.totalHours, r.rate, r.salary
+            ]);
+            const totalRow = ['合計','','',
+                salaryReportData.reduce((s,r)=>s+r.workDays,0),
+                Math.round(salaryReportData.reduce((s,r)=>s+r.totalHours,0)*10)/10,
+                '', salaryReportData.reduce((s,r)=>s+r.salary,0)
+            ];
+            rows.push(totalRow);
+
+            const csvContent = '\uFEFF' + [headers, ...rows]
+                .map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))
+                .join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `月薪報表_${yearMonth}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // ===== ROLE PAGE PERMISSIONS matrix UI =====
+    window.renderRolePermissionsUI = function() {
+        const roles = ['admin', 'staff', 'kitchen'];
+        const perms = getRolePermissions();
+        
+        roles.forEach(role => {
+            const container = document.querySelector(`.role-permission-checkboxes[data-role="${role}"]`);
+            if (!container) return;
+            
+            container.innerHTML = ALL_TABS.map(tab => {
+                const checked = perms[role] && perms[role].includes(tab.id) ? 'checked' : '';
+                // Safety: prevent admin from unchecking permission-tab to avoid locking themselves out
+                const disabled = (role === 'admin' && tab.id === 'permission-tab') ? 'disabled checked' : '';
+                return `
+                    <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.9rem; margin-bottom:0.25rem;">
+                        <input type="checkbox" name="${role}_${tab.id}" value="${tab.id}" ${checked} ${disabled}>
+                        <span>${tab.label}</span>
+                    </label>
+                `;
+            }).join('');
+        });
+    };
+
+    const rolePermissionsForm = document.getElementById('role-permissions-form');
+    if (rolePermissionsForm) {
+        rolePermissionsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newPerms = {
+                admin: ['permission-tab'], // Always keep permission-tab enabled for admin
+                staff: [],
+                kitchen: []
+            };
+            
+            const roles = ['admin', 'staff', 'kitchen'];
+            roles.forEach(role => {
+                ALL_TABS.forEach(tab => {
+                    if (role === 'admin' && tab.id === 'permission-tab') return;
+                    const chk = rolePermissionsForm.querySelector(`input[name="${role}_${tab.id}"]`);
+                    if (chk && chk.checked) {
+                        newPerms[role].push(tab.id);
+                    }
+                });
+            });
+            
+            saveRolePermissions(newPerms);
+            alert('✅ 權限設定已儲存！');
+            applySidebarTabVisibility();
         });
     }
 });

@@ -19,17 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartItemsCont = document.getElementById('cart-items-container');
     const cartTotal = document.getElementById('cart-total');
     const checkoutBtn = document.getElementById('checkout-btn');
-    // Welcome Table & Guests Modal elements
-    const tableEntryModal = document.getElementById('table-entry-modal');
-    const tableEntryForm = document.getElementById('table-entry-form');
-    const entryTableNumInput = document.getElementById('entry-table-number');
-    const entryGuestsInput = document.getElementById('entry-guests');
-    const displayTableNum = document.getElementById('display-table-number');
-    const displayGuests = document.getElementById('display-guests');
-    const changeTableBtn = document.getElementById('change-table-btn');
+    const tableInput = document.getElementById('table-number-input');
+    const guestsInput = document.getElementById('guests-number-input');
+    const tableHint = document.getElementById('table-hint');
 
-    let customerTableNumber = '';
-    let customerGuestsCount = 1;
+    // Table Banner elements
+    const tableInfoDisplay = document.getElementById('table-info-display');
+    const tableInfoEdit = document.getElementById('table-info-edit');
+    const tableEditBtn = document.getElementById('table-edit-btn');
+    const tableConfirmBtn = document.getElementById('table-confirm-btn');
+    const displayTableNum = document.getElementById('display-table-num');
+    const displayGuests = document.getElementById('display-guests');
 
     // Invoice
     const invPaper = document.getElementById('inv-paper');
@@ -61,67 +61,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const successTable = document.getElementById('success-table');
     const closeSuccessBtn = document.getElementById('close-success-btn');
 
+    // ===== TABLE BANNER LOGIC =====
+    function switchToEditMode() {
+        tableInfoDisplay.style.display = 'none';
+        tableInfoEdit.style.display = 'flex';
+        tableInput.focus();
+    }
+    function switchToDisplayMode() {
+        const tNum = tableInput.value.trim();
+        const gNum = parseInt(guestsInput.value, 10) || 1;
+        if (!tNum) {
+            tableInput.focus();
+            tableHint.style.display = 'inline';
+            return;
+        }
+        tableHint.style.display = 'none';
+        displayTableNum.textContent = tNum;
+        displayGuests.textContent = gNum;
+        tableInfoEdit.style.display = 'none';
+        tableInfoDisplay.style.display = 'flex';
+    }
+    if (tableEditBtn) tableEditBtn.addEventListener('click', switchToEditMode);
+    if (tableConfirmBtn) tableConfirmBtn.addEventListener('click', switchToDisplayMode);
+    // Allow pressing Enter in table input to confirm
+    if (tableInput) tableInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') switchToDisplayMode(); });
+
     // ===== INIT =====
-    // Welcome Modal logic
-    tableEntryForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        customerTableNumber = entryTableNumInput.value.trim();
-        customerGuestsCount = parseInt(entryGuestsInput.value, 10) || 1;
-        
-        displayTableNum.textContent = customerTableNumber;
-        displayGuests.textContent = customerGuestsCount;
-        
-        tableEntryModal.style.display = 'none';
-    });
-
-    changeTableBtn.addEventListener('click', () => {
-        entryTableNumInput.value = customerTableNumber;
-        entryGuestsInput.value = customerGuestsCount;
-        tableEntryModal.style.display = 'flex';
-    });
-
     renderCategoryTabs();
     renderMenu();
     updateCartUI();
     initShopName();
-
-    // ===== 即時同步：Firebase 連線後自動更新前台 =====
-    function startFrontendSync() {
-        if (!window.PetCafeSync || !PetCafeSync.isOnline) return;
-
-        // 菜單變更→ 自動重新渲染
-        PetCafeSync.syncListen('menu', (newMenu) => {
-            menu = newMenu;
-            renderCategoryTabs();
-            renderMenu();
-        }, 'petCafeMenu');
-
-        // 套餐選項變更（已開模式窗口處理）
-        PetCafeSync.syncListen('setMealOptions', () => {}, 'petCafeSetMealOptions');
-
-        // 飲品尺寸變更
-        PetCafeSync.syncListen('drinkSizes', () => {}, 'petCafeDrinkSizes');
-
-        // 設定（店名）變更
-        PetCafeSync.syncListen('settings', (newSettings) => {
-            if (newSettings && newSettings.shopName) {
-                document.querySelectorAll('.shop-name-display').forEach(el => el.textContent = newSettings.shopName);
-                document.title = `${newSettings.shopName} | 寵物友善咖啡廳`;
-            }
-        }, 'petCafeSettings');
-
-        // 將前台的新訂單同步到 posQueue
-        // (已由 saveCart -> savePosQueueOrders 進行，無需額外監聽)
-
-        console.log('[Frontend] Firebase 即時同步已啟動');
-    }
-
-    if (window.PetCafeSync) {
-        PetCafeSync.onStatusChange((online) => {
-            if (online) startFrontendSync();
-        });
-        setTimeout(() => { if (PetCafeSync.isOnline) startFrontendSync(); }, 1500);
-    }
 
     // ===== CATEGORY TABS =====
     function renderCategoryTabs() {
@@ -156,37 +125,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'menu-item';
             const hasSetMeal = catInfo.hasSetMeal;
-            
-            if (item.isPreparing) {
-                card.style.opacity = '0.7';
-                card.innerHTML = `
-                    <div class="menu-item-name">${item.name} <span class="preparing-badge" style="background:#e65100;color:white;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:5px;vertical-align:middle;font-weight:bold;">準備中</span></div>
-                    <div class="menu-item-desc">${item.description || ''}</div>
-                    <div class="menu-item-bottom">
-                        <span class="price">NT$ ${item.price}</span>
-                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
-                            ${hasSetMeal ? '<span class="set-meal-badge" style="opacity:0.5;">可加套餐</span>' : ''}
-                            <button class="add-btn disabled" style="background:#ccc;cursor:not-allowed;" disabled>準備中</button>
-                        </div>
+            card.innerHTML = `
+                <div class="menu-item-name">${item.name}</div>
+                <div class="menu-item-desc">${item.description || ''}</div>
+                <div class="menu-item-bottom">
+                    <span class="price">NT$ ${item.price}</span>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+                        ${hasSetMeal ? '<span class="set-meal-badge">可加套餐</span>' : ''}
+                        <button class="add-btn" data-id="${item.id}">加入購物車</button>
                     </div>
-                `;
-            } else {
-                card.innerHTML = `
-                    <div class="menu-item-name">${item.name}</div>
-                    <div class="menu-item-desc">${item.description || ''}</div>
-                    <div class="menu-item-bottom">
-                        <span class="price">NT$ ${item.price}</span>
-                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
-                            ${hasSetMeal ? '<span class="set-meal-badge">可加套餐</span>' : ''}
-                            <button class="add-btn" data-id="${item.id}">加入購物車</button>
-                        </div>
-                    </div>
-                `;
-                card.querySelector('.add-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    handleAddItem(item);
-                });
-            }
+                </div>
+            `;
+            card.querySelector('.add-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleAddItem(item);
+            });
             menuContainer.appendChild(card);
         });
     }
@@ -194,8 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== ADD ITEM =====
     function handleAddItem(item) {
         const catInfo = getCategoryInfo(item.category);
-        const hasNotes = (item.notes && item.notes.length > 0) || (item.note && item.note.trim().length > 0);
-        if (catInfo.hasSetMeal || ['drinks', 'coffee', 'tea'].includes(item.category) || hasNotes) {
+        const hasNotes = item.note && item.note.trim().length > 0;
+        if (catInfo.hasSetMeal || item.category === 'drinks' || hasNotes) {
             openSetMealModal(item);
         } else {
             addToCart(item, [], false);
@@ -264,77 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
         smPreview.classList.add('show');
     }
 
-    // ===== SHARED NOTE GROUP RENDERER =====
-    // Renders note groups into any container element.
-    // Returns an object { getSelected } to read currently selected notes.
-    function renderNoteGroupsIntoList(container, item, sharedNotes, onChanged) {
-        let noteGroups = [];
-        if (item.notes && Array.isArray(item.notes) && item.notes.length > 0) {
-            noteGroups = item.notes;
-        } else if (item.note && item.note.trim().length > 0) {
-            noteGroups = [{ title: '備註', options: item.note.split(/[,，]/).map(x => x.trim()).filter(Boolean) }];
-        }
-        if (noteGroups.length === 0) return;
-
-        const hNote = document.createElement('div');
-        hNote.className = 'sm-section-header';
-        hNote.textContent = '📝 備註選項';
-        container.appendChild(hNote);
-
-        noteGroups.forEach(group => {
-            if (!group.options || group.options.length === 0) return;
-
-            // Card wrapper for the whole group
-            const card = document.createElement('div');
-            card.style.cssText = 'background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:0.6rem 0.85rem 0.75rem;margin-bottom:0.6rem;';
-
-            const groupLabel = document.createElement('div');
-            groupLabel.style.cssText = 'font-size:0.78rem;color:#888;font-weight:700;margin-bottom:0.5rem;letter-spacing:0.06em;text-transform:uppercase;';
-            groupLabel.textContent = group.title;
-            card.appendChild(groupLabel);
-
-            const tagRow = document.createElement('div');
-            tagRow.style.cssText = 'display:flex;gap:0.4rem;flex-wrap:wrap;';
-
-            let selectedTagEl = null;
-
-            group.options.forEach(optName => {
-                const tag = document.createElement('div');
-                tag.className = 'note-tag-option';
-                tag.style.cssText = 'padding:0.35rem 0.75rem;border:1.5px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;font-size:0.88rem;transition:all 0.18s;';
-                tag.textContent = optName;
-
-                tag.addEventListener('click', () => {
-                    if (selectedTagEl && selectedTagEl !== tag) {
-                        selectedTagEl.style.background = '#fff';
-                        selectedTagEl.style.color = '';
-                        selectedTagEl.style.borderColor = '#ddd';
-                        const prevIdx = sharedNotes.indexOf(selectedTagEl.textContent);
-                        if (prevIdx !== -1) sharedNotes.splice(prevIdx, 1);
-                    }
-                    if (selectedTagEl === tag) {
-                        tag.style.background = '#fff';
-                        tag.style.color = '';
-                        tag.style.borderColor = '#ddd';
-                        const idx = sharedNotes.indexOf(optName);
-                        if (idx !== -1) sharedNotes.splice(idx, 1);
-                        selectedTagEl = null;
-                    } else {
-                        tag.style.background = 'var(--primary-color)';
-                        tag.style.color = '#fff';
-                        tag.style.borderColor = 'var(--primary-color)';
-                        sharedNotes.push(optName);
-                        selectedTagEl = tag;
-                    }
-                    if (onChanged) onChanged();
-                });
-                tagRow.appendChild(tag);
-            });
-            card.appendChild(tagRow);
-            container.appendChild(card);
-        });
-    }
-
     function openSetMealModal(item) {
         pendingSetMealItem = item;
         selectedAddons = [];
@@ -348,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ecoCupCheckbox = document.getElementById('eco-cup-checkbox');
         if (ecoCupCheckbox) ecoCupCheckbox.checked = false;
 
-        if (['drinks', 'coffee', 'tea'].includes(item.category)) {
+        if (item.category === 'drinks') {
             // Drinks: single-select size + eco cup
             document.getElementById('sm-title').textContent = '選擇容量（必選）';
             if (ecoCupContainer) ecoCupContainer.style.display = 'block';
@@ -369,24 +251,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 setmealOptsList.appendChild(el);
             });
             updateSmPreview();
-
-            // Note groups for this drink item
-            renderNoteGroupsIntoList(setmealOptsList, item, selectedNotes, updateSmPreview);
-
         } else {
-            // Food items: drinks section (single-select) + set meal options (multi)
+            // Food items: drinks section (multi) + set meal options (multi)
             document.getElementById('sm-title').textContent = '加點項目（可複選）';
             if (ecoCupContainer) ecoCupContainer.style.display = 'none';
 
-            // Section 1: Drinks from menu (with optional discount, single-select)
+            // Section 1: Drinks from menu (with optional discount)
             const freshMenu = getMenu();
-            const drinkItems = freshMenu.filter(m => ['drinks', 'coffee', 'tea'].includes(m.category) && !m.isPreparing);
+            const drinkItems = freshMenu.filter(m => m.category === 'drinks');
             const discounts = getDrinkDiscounts();
             const drinkDiscount = discounts[item.category] || 0;
-
-            // Container that holds drink options + dynamic drink note groups below
-            const drinkNoteArea = document.createElement('div');
-            drinkNoteArea.id = 'drink-note-area';
 
             if (drinkItems.length > 0) {
                 const h1 = document.createElement('div');
@@ -396,87 +270,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     : '☕ 加點飲品';
                 setmealOptsList.appendChild(h1);
 
-                // Track selected drink for note rendering
-                let activeDrinkEl = null;
-                let activeDrinkNoteCleanup = () => {};
-
                 drinkItems.forEach(drink => {
                     const discountedPrice = Math.max(0, drink.price - drinkDiscount);
                     const optObj = { id: 'drink_' + drink.id, name: drink.name, price: discountedPrice };
-                    const el = document.createElement('div');
-                    el.className = 'setmeal-option drink-addon-opt';
-                    el.innerHTML = `
-                        <div class="opt-left">
-                            <div class="opt-check"></div>
-                            <span class="opt-name">${drink.name}</span>
-                        </div>
-                        <span class="opt-price">${drinkDiscount > 0
-                            ? `<span style="text-decoration:line-through;color:#aaa;font-size:0.8rem;">NT$ ${drink.price}</span> <span style="color:#2e7d32;">NT$ ${discountedPrice}</span>`
-                            : `+NT$ ${discountedPrice}`
-                        }</span>
-                    `;
-
-                    el.addEventListener('click', () => {
-                        const idx = selectedAddons.findIndex(a => a.id === optObj.id);
-
-                        // Remove previous drink note groups
-                        activeDrinkNoteCleanup();
-                        // Remove previous drink selection from selectedNotes
-                        if (activeDrinkEl && activeDrinkEl !== el) {
-                            activeDrinkEl.classList.remove('selected');
-                            selectedAddons = selectedAddons.filter(a => a.id !== selectedAddons.find(x => drinkItems.some(d => 'drink_' + d.id === x.id && activeDrinkEl !== el)));
-                        }
-
-                        if (idx === -1) {
-                            // Deselect all other drinks first (single-select drinks in set meal)
-                            drinkItems.forEach(d => {
-                                selectedAddons = selectedAddons.filter(a => a.id !== 'drink_' + d.id);
-                            });
-                            setmealOptsList.querySelectorAll('.setmeal-option.drink-addon-opt').forEach(e => e.classList.remove('selected'));
-
-                            selectedAddons.push(optObj);
-                            el.classList.add('selected');
-                            activeDrinkEl = el;
-
-                            // Render this drink's note groups right after the drink list
-                            const drinkNoteContainer = document.createElement('div');
-                            drinkNoteContainer.className = 'drink-note-container';
-                            drinkNoteContainer.style.cssText = 'margin:0.25rem 0 0.5rem;padding:0 0.25rem;';
-                            renderNoteGroupsIntoList(drinkNoteContainer, drink, selectedNotes, updateSmPreview);
-
-                            const insertAfter = setmealOptsList.querySelector('#drink-list-end');
-                            if (insertAfter) setmealOptsList.insertBefore(drinkNoteContainer, insertAfter);
-                            else setmealOptsList.appendChild(drinkNoteContainer);
-
-                            activeDrinkNoteCleanup = () => {
-                                if (drinkNoteContainer.parentNode) drinkNoteContainer.remove();
-                                // Remove notes that belonged to this drink from selectedNotes
-                                const drinkNoteGroups = drink.notes || [];
-                                drinkNoteGroups.forEach(g => {
-                                    g.options.forEach(opt => {
-                                        const ni = selectedNotes.indexOf(opt);
-                                        if (ni !== -1) selectedNotes.splice(ni, 1);
-                                    });
-                                });
-                            };
-                        } else {
-                            // Toggle off
-                            selectedAddons.splice(idx, 1);
-                            el.classList.remove('selected');
-                            activeDrinkEl = null;
-                            activeDrinkNoteCleanup = () => {};
-                        }
-                        updateSmPreview();
-                    });
-
-                    el.classList.add('drink-addon-opt');
+                    const el = makeAddonEl(optObj);
+                    if (drinkDiscount > 0) {
+                        const priceEl = el.querySelector('.opt-price');
+                        if (priceEl) priceEl.innerHTML = `<span style="text-decoration:line-through;color:#aaa;font-size:0.8rem;">NT$ ${drink.price}</span> <span style="color:#2e7d32;">NT$ ${discountedPrice}</span>`;
+                    }
                     setmealOptsList.appendChild(el);
                 });
-
-                // Anchor element so drink note groups are inserted in the right place
-                const anchor = document.createElement('div');
-                anchor.id = 'drink-list-end';
-                setmealOptsList.appendChild(anchor);
             }
 
             // Section 2: Other set meal options
@@ -493,9 +296,53 @@ document.addEventListener('DOMContentLoaded', () => {
                     setmealOptsList.appendChild(el);
                 });
             }
+        }
 
-            // Section 3: Note groups for the food item itself
-            renderNoteGroupsIntoList(setmealOptsList, item, selectedNotes, updateSmPreview);
+        // Section 3: Custom note options
+        if (item.note && item.note.trim().length > 0) {
+            const hNote = document.createElement('div');
+            hNote.className = 'sm-section-header';
+            hNote.textContent = '📝 選擇備註';
+            setmealOptsList.appendChild(hNote);
+
+            const noteCont = document.createElement('div');
+            noteCont.style.display = 'flex';
+            noteCont.style.gap = '0.5rem';
+            noteCont.style.flexWrap = 'wrap';
+            noteCont.style.marginTop = '0.5rem';
+            noteCont.style.marginBottom = '1rem';
+
+            const noteOptions = item.note.split(/[,，]/).map(x => x.trim()).filter(Boolean);
+            noteOptions.forEach(optName => {
+                const tag = document.createElement('div');
+                tag.className = 'note-tag-option';
+                tag.style.padding = '0.4rem 0.8rem';
+                tag.style.border = '1px solid #ddd';
+                tag.style.borderRadius = '20px';
+                tag.style.cursor = 'pointer';
+                tag.style.background = '#fff';
+                tag.style.fontSize = '0.9rem';
+                tag.style.transition = 'all 0.2s';
+                tag.textContent = optName;
+
+                tag.addEventListener('click', () => {
+                    const idx = selectedNotes.indexOf(optName);
+                    if (idx === -1) {
+                        selectedNotes.push(optName);
+                        tag.style.background = 'var(--primary-color)';
+                        tag.style.color = '#fff';
+                        tag.style.borderColor = 'var(--primary-color)';
+                    } else {
+                        selectedNotes.splice(idx, 1);
+                        tag.style.background = '#fff';
+                        tag.style.color = 'initial';
+                        tag.style.borderColor = '#ddd';
+                    }
+                    updateSmPreview();
+                });
+                noteCont.appendChild(tag);
+            });
+            setmealOptsList.appendChild(noteCont);
         }
 
         setmealModal.style.display = 'flex';
@@ -658,10 +505,17 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('購物車是空的喔！先挑選一些美味的餐點吧 🐾');
             return;
         }
-        if (!customerTableNumber) {
-            tableEntryModal.style.display = 'flex';
+        // Check table number — if in display mode it's already set
+        const tableNum = tableInput.value.trim();
+        if (!tableNum) {
+            // Switch to edit mode and show warning
+            if (tableInfoEdit) tableInfoEdit.style.display = 'flex';
+            if (tableInfoDisplay) tableInfoDisplay.style.display = 'none';
+            tableHint.style.display = 'inline';
+            tableInput.focus();
             return;
         }
+        tableHint.style.display = 'none';
 
         // Invoice info
         let invoiceType = 'paper';
@@ -679,14 +533,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const order = {
             id: 'ORD' + Date.now(),
             date: new Date().toISOString(),
-            tableNumber: customerTableNumber,
+            tableNumber: tableNum,
             type: '內用',
             source: 'frontend',
             items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.quantity, addons: i.addons || [], isEcoCup: i.isEcoCup, category: i.category, note: i.note || '' })),
             subtotal,
             discount: 0,
             total: subtotal,
-            guests: customerGuestsCount,
+            guests: parseInt(guestsInput ? guestsInput.value : 1, 10) || 1,
             invoiceType,
             invoiceData
         };
@@ -698,10 +552,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Show success
         successOrderId.textContent = '線上點單已送出，請至櫃檯結帳';
-        successTable.textContent = `🪑 桌號 ${customerTableNumber} (人數 ${customerGuestsCount}人)`;
+        successTable.textContent = `🪑 桌號 ${tableNum}`;
         successModal.style.display = 'flex';
 
-        // Clear cart
+        // Clear cart only (keep table info for continued ordering)
         cart = [];
         saveCart(cart);
         updateCartUI();
@@ -711,6 +565,9 @@ document.addEventListener('DOMContentLoaded', () => {
         invPaper.checked = true;
         carrierRow.style.display = 'none';
         uniformRow.style.display = 'none';
+        // Success msg update with guests
+        const gNum = parseInt(guestsInput ? guestsInput.value : 1, 10) || 1;
+        successTable.textContent = `🪑 桌號 ${tableNum}　👥 ${gNum} 人`;
     });
 
     closeSuccessBtn.addEventListener('click', () => {
